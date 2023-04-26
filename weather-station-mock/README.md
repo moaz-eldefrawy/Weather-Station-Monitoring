@@ -16,7 +16,3 @@ docker build -t demo:latest .
 ```shell
 docker run --rm -it demo:latest
 ```
-
-## Misc
-
-Maven can be optimized to use local/remote repository to cache artifacts. https://hub.docker.com/_/maven
