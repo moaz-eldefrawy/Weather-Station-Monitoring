@@ -29,8 +29,6 @@ services:
     image: "bitnami/zookeeper:latest"
     ports:
       - "2181:2181"
-    volumes:
-      - "zookeeper_data:/bitnami"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
     networks:

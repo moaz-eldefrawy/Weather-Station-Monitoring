@@ -1,7 +1,7 @@
 {
-  "name": "weather-station-monitoring",
+  "name": "weather-station-mock",
   "version": "1.0.0",
-  "description": "_👀 Easily apply tilt hover effect on React components_",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
