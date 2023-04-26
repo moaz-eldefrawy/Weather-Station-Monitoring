@@ -1,0 +1,19 @@
+{
+  "name": "weather-station-monitoring",
+  "version": "1.0.0",
+  "description": "_👀 Easily apply tilt hover effect on React components_",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-rdkafka": "^2.15.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
+  }
+}
