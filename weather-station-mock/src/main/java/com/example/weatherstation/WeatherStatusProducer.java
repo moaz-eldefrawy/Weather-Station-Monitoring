@@ -1,5 +1,9 @@
 package com.example.weatherstation;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+
 public class WeatherStatusProducer {
   private Long isNoCounter = 1L;
 
@@ -9,9 +13,9 @@ public class WeatherStatusProducer {
   Status getNextWeatherStatus() {
     // create a dummy weather
     Weather weather = Weather.builder()
-        .humidity(10)
-        .temperature(20)
-        .windSpeed(30)
+        .humidity(generateRandomNumberFromRange(30, 40))
+        .temperature(generateRandomNumberFromRange(20, 30))
+        .windSpeed(generateRandomNumberFromRange(10, 15))
         .build();
 
     Status status = Status.builder()
@@ -26,10 +30,6 @@ public class WeatherStatusProducer {
   }
 
   String getBatteryStatus() {
-    // Randomly, change the battery_status field by the following specs:
-    // ○ Low = 30% of messages per service
-    // ○ Medium = 40% of messages per service
-    // ○ High = 30% of messages per service
 
     int randomNumber = generateRandomNumberFromOneToTen();
 
@@ -46,4 +46,7 @@ public class WeatherStatusProducer {
     return (int) (Math.random() * 10) + 1;
   }
 
+  static int generateRandomNumberFromRange(int min, int max) {
+    return (int) (Math.random() * (max - min)) + min;
+  }
 }
