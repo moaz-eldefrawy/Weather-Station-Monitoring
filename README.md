@@ -30,7 +30,6 @@ npm install react-parallax-tilt
   - tilt component with custom **manual input** 🕹 (joystick, slider etc.) [🔗demo](https://mkosir.github.io/react-parallax-tilt/?path=/story/react-parallax-tilt--tilt-manual-input)
   - **parallax** effect on overlaid images [🔗demo](https://mkosir.github.io/react-parallax-tilt/?path=/story/react-parallax-tilt--parallax-effect-img)
 
-
 <details>
 <summary>Using device orientation on iOS 13+</summary>
 
@@ -66,3 +65,4 @@ Build project and start storybook on [localhost](http://localhost:9009):
 
 
 
+```
