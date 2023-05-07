@@ -18,15 +18,14 @@ public class WeatherStatusProducer {
         .windSpeed(generateRandomNumberFromRange(10, 15))
         .build();
 
-    Status status = Status.builder()
-        .stationId(1L) // TODO get from env variable
+    // TODO: get station id from env variable
+    return Status.builder()
+        .stationId(1L)
         .sNo(isNoCounter++)
         .batteryStatus(getBatteryStatus())
         .statusTimestamp(System.currentTimeMillis())
         .weather(weather)
         .build();
-
-    return status;
   }
 
   String getBatteryStatus() {

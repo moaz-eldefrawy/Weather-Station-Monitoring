@@ -11,6 +11,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 public class WeatherStationMock {
 
 	public static final String TOPIC = "weather-station-status";
+	public static final int SLEEP_TIME = 1000;
 
 	public static void main(String[] args) {
 		WeatherStatusProducer weatherStatusProducer = new WeatherStatusProducer();
@@ -29,7 +30,7 @@ public class WeatherStationMock {
 				producer.send(new ProducerRecord(TOPIC,
 						status.getsNo().toString(), convertStatusToByteArray(status)));
 
-				Thread.sleep(1000);
+				Thread.sleep(SLEEP_TIME);
 			} catch (Exception e) {
 				e.printStackTrace();
 				producer.close();
