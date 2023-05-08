@@ -13,7 +13,7 @@ public class WeatherStatusProducer {
   Status getNextWeatherStatus() {
     // create a dummy weather
     Weather weather = Weather.builder()
-        .humidity(generateRandomNumberFromRange(30, 40))
+        .humidity(generateRandomNumberFromRange(0, 100))
         .temperature(generateRandomNumberFromRange(20, 30))
         .windSpeed(generateRandomNumberFromRange(10, 15))
         .build();

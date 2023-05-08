@@ -10,7 +10,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 
 public class WeatherStationMock {
 
-	public static final String TOPIC = "weather-station-status";
 	public static final int SLEEP_TIME = 1000;
 
 	public static void main(String[] args) {
@@ -27,7 +26,7 @@ public class WeatherStationMock {
 
 				Status status = weatherStatusProducer.getNextWeatherStatus();
 				// create a producer record with key status.isNo and value as status
-				producer.send(new ProducerRecord(TOPIC,
+				producer.send(new ProducerRecord(Constants.TOPIC,
 						status.getsNo().toString(), convertStatusToByteArray(status)));
 
 				Thread.sleep(SLEEP_TIME);
@@ -50,7 +49,7 @@ public class WeatherStationMock {
 
 	static Properties createProduceProps() {
 		Properties props = new Properties();
-		props.put("bootstrap.servers", "localhost:9092"); // TODO: make an env variable
+		props.put("bootstrap.servers", Constants.BOOTSTRAP_SERVERS); // TODO: make an env variable
 		props.put("key.serializer",
 				"org.apache.kafka.common.serialization.StringSerializer");
 		props.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");

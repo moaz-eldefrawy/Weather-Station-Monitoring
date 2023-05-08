@@ -1,17 +1,31 @@
 version: "3.8"
 services:
-  central_base_station:
+  # central-base-station:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.central_base_station
+  #   ports:
+  #     - "5000:5000"
+  #   depends_on:
+  #     - kafka
+  #   environment:
+  #     - KAFKA_HOST=localhost:9092
+  #   networks:
+  #     - my_bridge_network
+
+  weather-station-mock:
     build:
       context: .
-      dockerfile: Dockerfile.central_base_station
+      dockerfile: Dockerfile.weather-station-mock
     ports:
-      - "5000:5000"
+      - "5002:5002"
     depends_on:
       - kafka
-    environment:
-      - KAFKA_HOST=kafka:9092
+    environment:  
+      - KAFKA_HOST=localhost:9092
     networks:
       - my_bridge_network
+
 
   kafka:
     image: "bitnami/kafka:latest"
