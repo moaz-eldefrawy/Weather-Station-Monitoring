@@ -10,8 +10,11 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
@@ -20,11 +23,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.net.ntp.TimeStamp;
 
+import com.google.common.base.Optional;
+
 import lombok.Builder;
 import lombok.SneakyThrows;
 
 @Builder(builderMethodName = "builder")
-public class LSM<KeyType, ValueType> {
+public class LSM<K, V> {
   public static void main(String[] args) {
     // in memory HashMap <Key(type1), file and offset(Long)>
 
@@ -67,7 +72,7 @@ public class LSM<KeyType, ValueType> {
      * compact(string filePath) {
      * create a new file with a new id
      * 
-     * // problem:
+     * // problem: (conflict between writer and compaction)
      * 1. T1 (writer thread) updates disk
      * 2. T2 (compaction thread) updates disk
      * 3. T1 updates map
@@ -77,7 +82,15 @@ public class LSM<KeyType, ValueType> {
      * When updating map T2 must verify the map has the offset he is deleting (use a
      * concurrent hashmap)
      * 
+     * // problem: (conflict between compaction and reader)
+     * 1. T1 compacts disk
+     * 2. T2 reads keyDir
+     * 3. T1 updates keyDir
+     * 4. T2 reads wrong file offset (update by T1)
      * 
+     * soln:
+     * - use locks or semaphores
+     * - delete old segments later in the day .
      * 
      * 
      * }
@@ -117,7 +130,10 @@ public class LSM<KeyType, ValueType> {
   private long activeFileId = 0;
 
   @Builder.Default
-  private ConcurrentHashMap<KeyType, ValueLocation> keyDir = new ConcurrentHashMap<>();
+  private ConcurrentHashMap<K, ValueLocation> keyDir = new ConcurrentHashMap<>();
+
+  @Builder.Default
+  private long lastCompactedSegment = -1;
 
   /*
    * 
@@ -125,14 +141,14 @@ public class LSM<KeyType, ValueType> {
    * once.
    */
   // TODO: handle ClassNotFoundException
-  public ValueType get(KeyType key) {
+  public V get(K key) {
     ValueLocation valueLocation = keyDir.get(key);
     if (valueLocation == null) {
       return null;
     }
     File file = new File(dataFolderPath, valueLocation.getFile());
     try {
-      return readRecord(file, valueLocation.getOffset());
+      return readRecord(file, valueLocation.getOffset()).getValue();
     } catch (ClassNotFoundException | IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
@@ -140,28 +156,37 @@ public class LSM<KeyType, ValueType> {
     return null;
   }
 
-  private ValueType readRecord(File file, int offset) throws IOException, ClassNotFoundException {
+  private Tuple<K, V> readRecord(File file, int offset) throws IOException, ClassNotFoundException {
     try (FileInputStream fileInputStream = new FileInputStream(file)) {
       fileInputStream.skip(offset);
       BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
-      DataInputStream dataInputStream = new DataInputStream(bufferedInputStream);
-
-      // TODO: remove
-      int keyLength = dataInputStream.readInt();
-      byte[] keyBytes = new byte[keyLength];
-      bufferedInputStream.read(keyBytes);
-      KeyType key = (KeyType) convertFromByteArray(keyBytes);
-
-      int valueLength = dataInputStream.readInt();
-      byte[] valueBytes = new byte[valueLength];
-      bufferedInputStream.read(valueBytes);
-      ValueType value = (ValueType) convertFromByteArray(valueBytes);
-
-      return value;
+      return readRecord(bufferedInputStream, offset);
     }
   }
 
-  public synchronized void put(KeyType key, ValueType value) {
+  private Tuple<K, V> readRecord(InputStream InputStream, int offset) throws IOException, ClassNotFoundException {
+    DataInputStream dataInputStream = new DataInputStream(InputStream);
+
+    // TODO: remove
+    int keyLength = dataInputStream.readInt();
+    byte[] keyBytes = new byte[keyLength];
+    InputStream.read(keyBytes);
+    K key = (K) convertFromByteArray(keyBytes);
+
+    int valueLength = dataInputStream.readInt();
+    byte[] valueBytes = new byte[valueLength];
+    InputStream.read(valueBytes);
+    V value = (V) convertFromByteArray(valueBytes);
+
+    // get the offset of the next record
+
+    // TODO: abstract this
+    int recordLength = keyLength + valueLength + 8;
+
+    return new Tuple(key, value, offset + recordLength);
+  }
+
+  public synchronized void put(K key, V value) {
     File file = new File(dataFolderPath, String.valueOf(activeFileId));
     long fileSizeInKB = file.length() / 1024;
     if (fileSizeInKB < segmentSizeThreshold) {
@@ -172,7 +197,7 @@ public class LSM<KeyType, ValueType> {
     }
   }
 
-  private synchronized void writeRecord(File file, KeyType key, ValueType value) {
+  private synchronized void writeRecord(File file, K key, V value) {
 
     // TODO: make a global buffered output stream
     try (FileOutputStream fileOutputStream = new FileOutputStream(file, true)) {
@@ -233,6 +258,41 @@ public class LSM<KeyType, ValueType> {
 
   public synchronized void purgeOldCopies() {
     File file = new File(dataFolderPath);
+    File[] segmentsToPruge = file.listFiles(new FilenameFilter() {
+      @Override
+      public boolean accept(File dir, String name) {
+        long segmentId = Long.valueOf(name);
+        return segmentId < activeFileId;
+      }
+    });
+
+    for (File segment : segmentsToPruge) {
+      segment.delete();
+    }
+  }
+
+  public synchronized void generateCompactedSegments(File oldSegment) throws IOException, ClassNotFoundException {
+    // open the segment
+    FileInputStream fos = new FileInputStream(oldSegment);
+    File newSegment = new File(dataFolderPath, oldSegment.getName() + ".compacted");
+
+    // TODO: we only need the key here
+    Tuple<K, V> record;
+    int offset = 0;
+    do {
+      // correct assumption: first record always exists
+      record = readRecord(fos, offset);
+      K key = record.getKey();
+      if (keyDir.containsKey(key)) {
+        // write the record to the new segment
+        writeRecord(newSegment, key, record.getValue());
+      } else {
+        // skip the record
+      }
+      // update offset
+      offset = record.getEndOffset();
+    } while (record.getEndOffset() < oldSegment.length());
+    fos.close();
 
   }
 
@@ -242,6 +302,35 @@ public class LSM<KeyType, ValueType> {
 
   public String getDataFolderPath() {
     return dataFolderPath;
+  }
+
+  class Tuple<K, V> {
+    private K key;
+    private V value;
+    int endOffset;
+
+    public Tuple(K key, V value) {
+      this.key = key;
+      this.value = value;
+    }
+
+    public Tuple(K key, V value, int endOffset) {
+      this.key = key;
+      this.value = value;
+      this.endOffset = (endOffset);
+    }
+
+    public K getKey() {
+      return key;
+    }
+
+    public V getValue() {
+      return value;
+    }
+
+    public Integer getEndOffset() {
+      return endOffset;
+    }
   }
 
 }
