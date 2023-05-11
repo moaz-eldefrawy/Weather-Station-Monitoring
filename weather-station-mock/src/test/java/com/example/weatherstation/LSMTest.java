@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import java.io.File;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.*;
 
@@ -51,9 +52,9 @@ public class LSMTest {
     }
 
     /// assert that a new segment is created with a file name equal to 1
-    File newSegment = new File(lsm.getDataFolderPath() + "/1");
+    File newSegment = new File(lsm.getDataFolderPath() + "/1.1");
     assertEquals(true, newSegment.exists());
-    newSegment = new File(lsm.getDataFolderPath() + "/2");
+    newSegment = new File(lsm.getDataFolderPath() + "/2.1");
     assertEquals(true, newSegment.exists());
   }
 
@@ -62,5 +63,70 @@ public class LSMTest {
     for (File file : dataFolder.listFiles()) {
       file.delete();
     }
+  }
+
+  @Test
+  public void compactionGeneratesNewSegmentsAndUpdateKeyDirCorrectly() {
+    resetDataFolder();
+    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path)
+        .build();
+
+    final int N = 4 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 10;
+    for (int i = 0; i < N; i++) {
+      lsm.put("key" + (i % 1000), "value" + (i % 1000));
+    }
+
+    /// assert that a new segment is created with a file name equal to 1
+    File newSegment = new File(lsm.getDataFolderPath() + "/1.1");
+    newSegment = new File(lsm.getDataFolderPath() + "/2.1");
+    lsm.compact();
+
+    /// assert that a new segment is created with a file name equal to 1
+    newSegment = new File(lsm.getDataFolderPath() + "/1.2");
+    assertEquals(true, newSegment.exists());
+    newSegment = new File(lsm.getDataFolderPath() + "/2.2");
+    assertEquals(true, newSegment.exists());
+
+    // assert all the values
+    for (int i = 0; i < N; i++) {
+      assertEquals("value" + (i % 1000), lsm.get("key" + (i % 1000)));
+    }
+
+    // assert that the key dir is updated correctly
+    ConcurrentHashMap<String, ValueLocation> keyDir = lsm.getKeyDir();
+    assertEquals(1000, keyDir.size());
+
+  }
+
+  @Test
+  public void purgingRemovesOldSegments() {
+    resetDataFolder();
+    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
+        .build();
+
+    final int N = 4 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 10;
+    for (int i = 0; i < N; i++) {
+      lsm.put("key" + (i % 1000), "value" + (i % 1000));
+    }
+
+    /// assert that a new segment is created with a file name equal to 1
+    File newSegment = new File(lsm.getDataFolderPath() + "/1.1");
+    newSegment = new File(lsm.getDataFolderPath() + "/2.1");
+    lsm.compact();
+
+    // sleep for 100 ms
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    /// assert that a new segment is created with a file name equal to 1
+    newSegment = new File(lsm.getDataFolderPath() + "/1.1");
+    assertEquals(false, newSegment.exists());
+    newSegment = new File(lsm.getDataFolderPath() + "/2.1");
+    assertEquals(false, newSegment.exists());
+    newSegment = new File(lsm.getDataFolderPath() + "/3.1");
+    assertEquals(false, newSegment.exists());
+
   }
 }

@@ -18,7 +18,10 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.net.ntp.TimeStamp;
@@ -111,6 +114,12 @@ public class LSM<K, V> {
   }
 
   /*
+   * Initial version of the LSM segment
+   */
+  @Builder.Default
+  private String initialVersion = ".1";
+
+  /*
    * Segment size threshold in kilo bytes
    */
   @Builder.Default
@@ -127,13 +136,13 @@ public class LSM<K, V> {
    * Id of the last segment file being written to. (auto incrementing id)
    */
   @Builder.Default
-  private long activeFileId = 0;
+  private long activeSegmentId = 0;
+
+  @Builder.Default
+  private final int delayBetweenCompactionAndPurgingMS = 3600000;
 
   @Builder.Default
   private ConcurrentHashMap<K, ValueLocation> keyDir = new ConcurrentHashMap<>();
-
-  @Builder.Default
-  private long lastCompactedSegment = -1;
 
   /*
    * 
@@ -187,17 +196,17 @@ public class LSM<K, V> {
   }
 
   public synchronized void put(K key, V value) {
-    File file = new File(dataFolderPath, String.valueOf(activeFileId));
+    File file = new File(dataFolderPath, String.valueOf(activeSegmentId) + initialVersion);
     long fileSizeInKB = file.length() / 1024;
     if (fileSizeInKB < segmentSizeThreshold) {
-      writeRecord(file, key, value);
+      writeRecordAndUpdateKeyDir(file, key, value);
     } else {
-      File newSegment = new File(dataFolderPath, String.valueOf(++activeFileId));
-      writeRecord(file, key, value);
+      File newSegment = new File(dataFolderPath, String.valueOf(++activeSegmentId) + initialVersion);
+      writeRecordAndUpdateKeyDir(newSegment, key, value);
     }
   }
 
-  private synchronized void writeRecord(File file, K key, V value) {
+  private synchronized void writeRecordAndUpdateKeyDir(File file, K key, V value) {
 
     // TODO: make a global buffered output stream
     try (FileOutputStream fileOutputStream = new FileOutputStream(file, true)) {
@@ -250,19 +259,41 @@ public class LSM<K, V> {
   }
 
   public synchronized void compact() {
-    // first purge old copies
-
+    ArrayList<File> compactedSegments = new ArrayList<>();
     // second do the compaction on the new copies
+    File file = new File(dataFolderPath);
+    File[] segmentsToCompact = file.listFiles(new FilenameFilter() {
+      @Override
+      public boolean accept(File dir, String name) {
+        // split name by . and get the first part
 
+        long segmentId = Long.valueOf(name.split("\\.")[0]);
+        return segmentId < activeSegmentId;
+      }
+    });
+
+    for (File segment : segmentsToCompact) {
+      try {
+        generateCompactedSegmentsAndUpdateKeyDir(segment);
+        compactedSegments.add(segment);
+      } catch (ClassNotFoundException | IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
+
+    Timer timer = new Timer();
+    timer.schedule(new DeleteOldSegmentsTask(compactedSegments), delayBetweenCompactionAndPurgingMS);
+    return;
   }
 
-  public synchronized void purgeOldCopies() {
+  private synchronized void purgeOldCopies() {
     File file = new File(dataFolderPath);
     File[] segmentsToPruge = file.listFiles(new FilenameFilter() {
       @Override
       public boolean accept(File dir, String name) {
         long segmentId = Long.valueOf(name);
-        return segmentId < activeFileId;
+        return segmentId < activeSegmentId;
       }
     });
 
@@ -271,10 +302,15 @@ public class LSM<K, V> {
     }
   }
 
-  public synchronized void generateCompactedSegments(File oldSegment) throws IOException, ClassNotFoundException {
+  private synchronized void purgeSegment(File segment) {
+    segment.delete();
+  }
+
+  private synchronized void generateCompactedSegmentsAndUpdateKeyDir(File oldSegment)
+      throws IOException, ClassNotFoundException {
     // open the segment
     FileInputStream fos = new FileInputStream(oldSegment);
-    File newSegment = new File(dataFolderPath, oldSegment.getName() + ".compacted");
+    File newSegment = new File(dataFolderPath, getNewSegmentVersionName(oldSegment.getName()));
 
     // TODO: we only need the key here
     Tuple<K, V> record;
@@ -285,7 +321,7 @@ public class LSM<K, V> {
       K key = record.getKey();
       if (keyDir.containsKey(key)) {
         // write the record to the new segment
-        writeRecord(newSegment, key, record.getValue());
+        writeRecordAndUpdateKeyDir(newSegment, key, record.getValue());
       } else {
         // skip the record
       }
@@ -296,12 +332,35 @@ public class LSM<K, V> {
 
   }
 
+  private String getNewSegmentVersionName(String oldSegmentName) {
+    // split the segment with .
+    // return the first part + "." + the 2nd field + 1
+    String temp[] = oldSegmentName.split("\\.");
+    return temp[0] + "." + String.valueOf(Integer.valueOf(temp[1]) + 1);
+  }
+
   public int getSegmentSizeThreshold() {
     return segmentSizeThreshold;
   }
 
   public String getDataFolderPath() {
     return dataFolderPath;
+  }
+
+  public ConcurrentHashMap<K, ValueLocation> getKeyDir() {
+    return keyDir; // TODO: return an immutable version for all getters
+  }
+
+  class DeleteOldSegmentsTask extends TimerTask {
+    private ArrayList<File> compactedSegments;
+
+    public DeleteOldSegmentsTask(ArrayList<File> compactedSegments) { // constructor that takes data as a parameter
+      this.compactedSegments = compactedSegments;
+    }
+
+    public void run() {
+      compactedSegments.forEach(segment -> purgeSegment(segment));
+    }
   }
 
   class Tuple<K, V> {
