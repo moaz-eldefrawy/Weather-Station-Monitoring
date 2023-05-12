@@ -190,10 +190,20 @@ public class LSM<K, V> {
     File file = new File(dataFolderPath, String.valueOf(activeSegmentId) + initialVersion);
     long fileSizeInKB = file.length() / 1024;
     if (fileSizeInKB < segmentSizeThreshold) {
-      writeRecordAndUpdateKeyDir(file, key, value);
+      try {
+        writeRecordWithHintFile(file, key, value);
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
     } else {
       File newSegment = new File(dataFolderPath, String.valueOf(++activeSegmentId) + initialVersion);
-      writeRecordAndUpdateKeyDir(newSegment, key, value);
+      try {
+        writeRecordWithHintFile(newSegment, key, value);
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
     }
   }
 
