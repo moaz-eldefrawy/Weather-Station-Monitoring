@@ -4,13 +4,10 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInput;
 import java.io.DataInputStream;
-import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -19,17 +16,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.commons.net.ntp.TimeStamp;
-
-import com.google.common.base.Optional;
-
 import lombok.Builder;
-import lombok.SneakyThrows;
 
 @Builder(builderMethodName = "builder")
 public class LSM<K, V> {
@@ -146,7 +137,7 @@ public class LSM<K, V> {
 
   /*
    * 
-   * Note: handle reading wrong keyDir offset (due to compaction) by retrying
+   * TODO: handle reading wrong keyDir offset (due to compaction) by retrying
    * once.
    */
   // TODO: handle ClassNotFoundException
@@ -214,14 +205,10 @@ public class LSM<K, V> {
       // TODO: apply the right streaming
       byte[] keyBytes = convertToByteArray(key);
       byte[] valueBytes = convertToByteArray(value);
-      Date date = new Date();
 
       int offset = (int) file.length();
-      // TODO: add for recovery
-      // byte[] dateBytes = convertToByteArray(date);
-      // this.writeWithLength(dateBytes, bufferedOutputStream);
-      writeToSegmentWithLength(keyBytes, fileOutputStream);
-      writeToSegmentWithLength(valueBytes, fileOutputStream);
+      writeBytesWithLength(keyBytes, fileOutputStream);
+      writeBytesWithLength(valueBytes, fileOutputStream);
 
       bufferedOutputStream.flush();
       bufferedOutputStream.close();
@@ -238,7 +225,44 @@ public class LSM<K, V> {
     }
   }
 
-  private void writeToSegmentWithLength(byte[] objBytes, OutputStream o) throws IOException {
+  /*
+   * 
+   * Writes a record to the segment and hint file and updates the keyDir
+   */
+  private synchronized void writeRecordWithHintFile(File file, K key, V value) throws IOException {
+    byte[] keyBytes = convertToByteArray(key);
+    byte[] valueBytes = convertToByteArray(value);
+
+    try (FileOutputStream fileOutputStream = new FileOutputStream(file, true)) {
+      BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
+      int offset = (int) file.length();
+
+      writeBytesWithLength(keyBytes, fileOutputStream);
+      writeBytesWithLength(valueBytes, fileOutputStream);
+
+      bufferedOutputStream.flush();
+      bufferedOutputStream.close();
+
+      ValueLocation valueLocation = ValueLocation.builder().file(file.getName())
+          .offset(offset)
+          .build();
+      keyDir.put(key, valueLocation);
+    }
+    File hintFile = new File(file.getAbsolutePath().concat(".hint"));
+    writeHintFile(hintFile, key, null);
+  }
+
+  private void writeHintFile(File file, K key, ValueLocation valueLocation) throws IOException {
+    byte[] keyBytes = convertToByteArray(key);
+    byte[] valueLocationBytes = convertToByteArray(valueLocation);
+
+    try (FileOutputStream fileOutputStream = new FileOutputStream(file, true)) {
+      writeBytesWithLength(keyBytes, fileOutputStream);
+      writeBytesWithLength(valueLocationBytes, fileOutputStream);
+    }
+  }
+
+  private void writeBytesWithLength(byte[] objBytes, OutputStream o) throws IOException {
     DataOutputStream dos = new DataOutputStream(o);
     dos.writeInt(objBytes.length);
     o.write(objBytes);
@@ -274,8 +298,9 @@ public class LSM<K, V> {
 
     for (File segment : segmentsToCompact) {
       try {
-        generateCompactedSegmentsAndUpdateKeyDir(segment);
+        compactSegment(segment);
         compactedSegments.add(segment);
+        createHintFile(segment);
       } catch (ClassNotFoundException | IOException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
@@ -306,7 +331,43 @@ public class LSM<K, V> {
     segment.delete();
   }
 
-  private synchronized void generateCompactedSegmentsAndUpdateKeyDir(File oldSegment)
+  private void createHintFile(File segment) throws IOException, ClassNotFoundException {
+    File hintFile = new File(segment.getParent(), segment.getName().split("\\.")[0] + ".hint");
+    hintFile.delete();
+    FileOutputStream fileOutptuStream = new FileOutputStream(hintFile, true);
+    BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutptuStream);
+    DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream);
+
+    FileInputStream fileInputStream = new FileInputStream(segment);
+    BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
+    DataInputStream dataInputStream = new DataInputStream(bufferedInputStream);
+
+    int offset = 0;
+
+    while (offset < segment.length()) {
+      int keyLength = dataInputStream.readInt();
+      byte[] keyBytes = new byte[keyLength];
+      dataInputStream.read(keyBytes, offset, keyLength);
+      int valueLength = dataInputStream.readInt();
+
+      // keep skipping until valueLength amount is skipped.
+      // This is because skip is not guaranteed to skip the exact amount of bytes
+      // requested
+      long skipped = 0;
+      while (skipped < valueLength) {
+        skipped += dataInputStream.skip(valueLength - skipped);
+      }
+
+      offset = offset + keyLength + valueLength + 8;
+
+      dataOutputStream.writeInt(keyLength);
+      dataOutputStream.write(keyBytes);
+      dataOutputStream.writeInt(offset);
+
+    }
+  }
+
+  private synchronized void compactSegment(File oldSegment)
       throws IOException, ClassNotFoundException {
     // open the segment
     FileInputStream fos = new FileInputStream(oldSegment);
@@ -348,7 +409,9 @@ public class LSM<K, V> {
   }
 
   public ConcurrentHashMap<K, ValueLocation> getKeyDir() {
-    return keyDir; // TODO: return an immutable version for all getters
+    ConcurrentHashMap<K, ValueLocation> keyDir = new ConcurrentHashMap<>();
+    keyDir.putAll(this.keyDir);
+    return keyDir;
   }
 
   class DeleteOldSegmentsTask extends TimerTask {
