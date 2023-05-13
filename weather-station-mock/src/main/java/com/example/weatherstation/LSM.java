@@ -8,6 +8,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -16,9 +17,15 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import lombok.Builder;
 
@@ -191,7 +198,7 @@ public class LSM<K, V> {
     long fileSizeInKB = file.length() / 1024;
     if (fileSizeInKB < segmentSizeThreshold) {
       try {
-        writeRecordWithHintFile(file, key, value);
+        writeRecordWithHint(file, key, value);
       } catch (IOException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
@@ -199,7 +206,7 @@ public class LSM<K, V> {
     } else {
       File newSegment = new File(dataFolderPath, String.valueOf(++activeSegmentId) + initialVersion);
       try {
-        writeRecordWithHintFile(newSegment, key, value);
+        writeRecordWithHint(newSegment, key, value);
       } catch (IOException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
@@ -207,31 +214,24 @@ public class LSM<K, V> {
     }
   }
 
-  private synchronized void writeRecordAndUpdateKeyDir(File file, K key, V value) {
+  private synchronized void writeRecordAndUpdateKeyDir(File file, K key, V value) throws IOException {
+    // TODO: apply the right streaming
+    byte[] keyBytes = convertToByteArray(key);
+    byte[] valueBytes = convertToByteArray(value);
 
     // TODO: make a global buffered output stream
     try (FileOutputStream fileOutputStream = new FileOutputStream(file, true)) {
       BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
-      // TODO: apply the right streaming
-      byte[] keyBytes = convertToByteArray(key);
-      byte[] valueBytes = convertToByteArray(value);
-
       int offset = (int) file.length();
+
       writeBytesWithLength(keyBytes, fileOutputStream);
       writeBytesWithLength(valueBytes, fileOutputStream);
-
       bufferedOutputStream.flush();
       bufferedOutputStream.close();
-
       ValueLocation valueLocation = ValueLocation.builder().file(file.getName())
           .offset(offset)
           .build();
-
       keyDir.put(key, valueLocation);
-
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
     }
   }
 
@@ -239,7 +239,7 @@ public class LSM<K, V> {
    * 
    * Writes a record to the segment and hint file and updates the keyDir
    */
-  private synchronized void writeRecordWithHintFile(File file, K key, V value) throws IOException {
+  private synchronized void writeRecordWithHint(File file, K key, V value) throws IOException {
     byte[] keyBytes = convertToByteArray(key);
     byte[] valueBytes = convertToByteArray(value);
 
@@ -252,24 +252,24 @@ public class LSM<K, V> {
 
       bufferedOutputStream.flush();
       bufferedOutputStream.close();
-
       ValueLocation valueLocation = ValueLocation.builder().file(file.getName())
           .offset(offset)
           .build();
       keyDir.put(key, valueLocation);
+
+      File hintFile = new File(file.getAbsolutePath().concat(".hint"));
+      writeHintFile(hintFile, key, offset);
     }
-    File hintFile = new File(file.getAbsolutePath().concat(".hint"));
-    writeHintFile(hintFile, key, null);
+
   }
 
-  private void writeHintFile(File file, K key, ValueLocation valueLocation) throws IOException {
+  private void writeHintFile(File file, K key, int offset) throws IOException {
     byte[] keyBytes = convertToByteArray(key);
-    byte[] valueLocationBytes = convertToByteArray(valueLocation);
-
-    try (FileOutputStream fileOutputStream = new FileOutputStream(file, true)) {
-      writeBytesWithLength(keyBytes, fileOutputStream);
-      writeBytesWithLength(valueLocationBytes, fileOutputStream);
-    }
+    FileOutputStream fileOutputStream = new FileOutputStream(file, true);
+    writeBytesWithLength(keyBytes, fileOutputStream);
+    DataOutputStream dos = new DataOutputStream(fileOutputStream);
+    dos.writeInt(offset);
+    dos.close();
   }
 
   private void writeBytesWithLength(byte[] objBytes, OutputStream o) throws IOException {
@@ -292,7 +292,7 @@ public class LSM<K, V> {
     return ois.readObject();
   }
 
-  public synchronized void compact() {
+  public synchronized void compact() throws IOException, ClassNotFoundException {
     ArrayList<File> compactedSegments = new ArrayList<>();
     // second do the compaction on the new copies
     File file = new File(dataFolderPath);
@@ -302,19 +302,18 @@ public class LSM<K, V> {
         // split name by . and get the first part
 
         long segmentId = Long.valueOf(name.split("\\.")[0]);
-        return segmentId < activeSegmentId;
+        return segmentId < activeSegmentId && name.split("\\.").length == 2;
+        // return segmentId < activeSegmentId;
       }
     });
 
     for (File segment : segmentsToCompact) {
-      try {
-        compactSegment(segment);
-        compactedSegments.add(segment);
-        createHintFile(segment);
-      } catch (ClassNotFoundException | IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
+      File newSegment = compactSegment(segment);
+      compactedSegments.add(segment);
+      // detete old hint file if it exists
+      File oldHintFile = new File(segment.getAbsolutePath().concat(".hint"));
+      oldHintFile.delete();
+
     }
 
     Timer timer = new Timer();
@@ -341,32 +340,143 @@ public class LSM<K, V> {
     segment.delete();
   }
 
+  public ConcurrentHashMap<K, ValueLocation> generateKeyDirFromDisk() throws IOException, ClassNotFoundException {
+    File file = new File(dataFolderPath);
+    ConcurrentHashMap<K, ValueLocation> newKeyDir = new ConcurrentHashMap<K, ValueLocation>();
+    // create an arrayList of files of file children
+    List<File> allDataFiles = Arrays.asList(file.listFiles());
+    sortFiles(allDataFiles);
+
+    List<File> hintFiles = allDataFiles.stream().filter(f -> f.getName().endsWith(".hint")
+    // && Long.valueOf(f.getName().split( "\\.")[0]) < activeSegmentId
+    )
+        .collect(Collectors.toList());
+    Set<String> hintFilesIdSet = hintFiles.stream().map(f -> f.getName().split("\\.")[0])
+        .collect(Collectors.toSet());
+
+    List<File> segmentFiles = allDataFiles.stream().filter(f -> !f.getName().endsWith(".hint"))
+        .collect(Collectors.toList());
+    Set<String> segmentIdsSet = segmentFiles.stream().map(f -> f.getName().split("\\.")[0])
+        .collect(Collectors.toSet());
+
+    List<File> recoverySegmentFiles = segmentIdsSet.stream()
+        .filter(id -> !hintFilesIdSet.contains(id))
+        .map(id -> getLatestVersionFile(id, segmentFiles))
+        .collect(Collectors.toList());
+
+    for (File hintFile : hintFiles) {
+
+      FileInputStream fileInputStream = new FileInputStream(hintFile);
+      BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
+      try (DataInputStream dataInputStream = new DataInputStream(bufferedInputStream)) {
+        int offset = 0;
+
+        while (offset < hintFile.length()) {
+          int keyLength = dataInputStream.readInt();
+          byte[] keyBytes = new byte[keyLength];
+          dataInputStream.read(keyBytes);
+          int recordOffset = dataInputStream.readInt();
+
+          K key = (K) convertFromByteArray(keyBytes);
+          ValueLocation valueLocation = new ValueLocation(
+              convertHintFileNameToSegmentName(hintFile.getName()),
+              recordOffset);
+          newKeyDir.put(key, valueLocation);
+
+          offset += keyLength + 8;
+        }
+      }
+
+    }
+
+    // sort the segment files by id and version
+
+    for (File segmentFile : recoverySegmentFiles) {
+
+      FileInputStream fileInputStream = new FileInputStream(segmentFile);
+      BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
+      try (DataInputStream dataInputStream = new DataInputStream(bufferedInputStream)) {
+        int offset = 0;
+
+        while (offset < segmentFile.length()) {
+          int keyLength = dataInputStream.readInt();
+          byte[] keyBytes = new byte[keyLength];
+          dataInputStream.read(keyBytes);
+          int valueLength = dataInputStream.readInt();
+          byte[] valueBytes = new byte[valueLength];
+          dataInputStream.read(valueBytes);
+
+          K key = (K) convertFromByteArray(keyBytes);
+          // V value = (V) convertFromByteArray(valueBytes);
+          ValueLocation valueLocation = new ValueLocation(segmentFile.getName(),
+              offset);
+          newKeyDir.put(key, valueLocation);
+
+          offset += keyLength + valueLength + 8;
+        }
+      } catch (FileNotFoundException e) {
+        throw e;
+      } catch (ClassNotFoundException | IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+
+    }
+
+    keyDir = newKeyDir;
+    ConcurrentHashMap<K, ValueLocation> returnKeyDir = new ConcurrentHashMap<>();
+    returnKeyDir.putAll(newKeyDir);
+    return returnKeyDir;
+  }
+
+  private String convertHintFileNameToSegmentName(String hintFileName) {
+    String[] split = hintFileName.split("\\.");
+    return split[0] + "." + split[1];
+  }
+
+  private void sortFiles(List<File> files) {
+    Collections.sort(files, new Comparator<File>() {
+      @Override
+      public int compare(File o1, File o2) {
+        String[] o1Split = o1.getName().split("\\.");
+        String[] o2Split = o2.getName().split("\\.");
+        int o1Id = Integer.valueOf(o1Split[0]);
+        int o2Id = Integer.valueOf(o2Split[0]);
+        int o1Version = Integer.valueOf(o1Split[1]);
+        int o2Version = Integer.valueOf(o2Split[1]);
+        if (o1Id == o2Id) {
+          return o1Version - o2Version;
+        } else {
+          return o1Id - o2Id;
+        }
+      }
+    });
+  }
+
+  private File getLatestVersionFile(String segmentId, List<File> segmentFiles) {
+    List<File> segmentFilesWithId = segmentFiles.stream().filter(f -> f.getName().startsWith(segmentId + "."))
+        .collect(Collectors.toList());
+    return segmentFilesWithId.stream().max((f1, f2) -> f1.getName().compareTo(f2.getName())).get();
+  }
+
   private void createHintFile(File segment) throws IOException, ClassNotFoundException {
     File hintFile = new File(segment.getParent(), segment.getName().split("\\.")[0] + ".hint");
     hintFile.delete();
     FileOutputStream fileOutptuStream = new FileOutputStream(hintFile, true);
-    BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutptuStream);
-    DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream);
+    DataOutputStream dataOutputStream = new DataOutputStream(fileOutptuStream);
 
     FileInputStream fileInputStream = new FileInputStream(segment);
-    BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
-    DataInputStream dataInputStream = new DataInputStream(bufferedInputStream);
+    DataInputStream dataInputStream = new DataInputStream(fileInputStream);
 
     int offset = 0;
 
     while (offset < segment.length()) {
       int keyLength = dataInputStream.readInt();
       byte[] keyBytes = new byte[keyLength];
-      dataInputStream.read(keyBytes, offset, keyLength);
+      fileInputStream.read(keyBytes);
       int valueLength = dataInputStream.readInt();
-
-      // keep skipping until valueLength amount is skipped.
-      // This is because skip is not guaranteed to skip the exact amount of bytes
-      // requested
-      long skipped = 0;
-      while (skipped < valueLength) {
-        skipped += dataInputStream.skip(valueLength - skipped);
-      }
+      byte[] valueBytes = new byte[valueLength];
+      fileInputStream.read(valueBytes);
 
       offset = offset + keyLength + valueLength + 8;
 
@@ -377,7 +487,7 @@ public class LSM<K, V> {
     }
   }
 
-  private synchronized void compactSegment(File oldSegment)
+  private synchronized File compactSegment(File oldSegment)
       throws IOException, ClassNotFoundException {
     // open the segment
     FileInputStream fos = new FileInputStream(oldSegment);
@@ -386,20 +496,22 @@ public class LSM<K, V> {
     // TODO: we only need the key here
     Tuple<K, V> record;
     int offset = 0;
-    do {
-      // correct assumption: first record always exists
+    while (offset < oldSegment.length()) {
       record = readRecord(fos, offset);
       K key = record.getKey();
       if (keyDir.containsKey(key)) {
         // write the record to the new segment
-        writeRecordAndUpdateKeyDir(newSegment, key, record.getValue());
+        // TODO: use replace here
+        writeRecordWithHint(newSegment, key, record.getValue());
       } else {
         // skip the record
       }
       // update offset
       offset = record.getEndOffset();
-    } while (record.getEndOffset() < oldSegment.length());
+    }
     fos.close();
+
+    return newSegment;
 
   }
 
