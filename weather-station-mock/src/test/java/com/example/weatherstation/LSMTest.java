@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.*;
@@ -66,7 +67,7 @@ public class LSMTest {
   }
 
   @Test
-  public void compactionGeneratesNewSegmentsAndUpdateKeyDirCorrectly() {
+  public void compactionGeneratesNewSegmentsAndUpdateKeyDirCorrectly() throws ClassNotFoundException, IOException {
     resetDataFolder();
     LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path)
         .build();
@@ -99,7 +100,7 @@ public class LSMTest {
   }
 
   @Test
-  public void purgingRemovesOldSegments() {
+  public void purgingRemovesOldSegments() throws ClassNotFoundException, IOException {
     resetDataFolder();
     LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
         .build();

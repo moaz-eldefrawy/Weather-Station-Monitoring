@@ -8,7 +8,7 @@ Container used for packaging (executable): openjdk:11-jre-slim
 ## Building of the image
 
 ```shell
-docker build -t demo:latest .
+docker build -t weather-station-mock:1.0.0 .
 ```
 
 ## Run the image

@@ -1,0 +1,11 @@
+---
+# TODO: Switch to replica set 
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: weather-station-mock
+spec:
+  containers:
+    - name: weather-station-mock
+      image: weather-station-mock:1.0.0
+
