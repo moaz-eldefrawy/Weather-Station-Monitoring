@@ -28,9 +28,10 @@ public class WeatherStationMock {
 				// create a producer record with key status.isNo and value as status
 				producer.send(new ProducerRecord(Constants.TOPIC,
 						status.getsNo().toString(), convertStatusToByteArray(status)));
-
+        System.out.println("Produced a record: " + status.getsNo().toString());
 				Thread.sleep(SLEEP_TIME);
 			} catch (Exception e) {
+        System.out.println("Error!");
 				e.printStackTrace();
 				producer.close();
 				return;

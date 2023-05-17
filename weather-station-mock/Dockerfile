@@ -15,5 +15,5 @@ RUN mvn -f ${HOME}/pom.xml assembly:assembly
 #
 FROM openjdk:11-jre-slim 
 COPY --from=build /usr/app/target/weather-station.jar /usr/app/weather-station.jar 
-EXPOSE 8080  
+EXPOSE 8080
 CMD ["java","-jar","/usr/app/weather-station.jar"]  
