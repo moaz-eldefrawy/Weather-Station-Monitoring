@@ -3,3 +3,17 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
   - role: worker
+    extraPortMappings:  # A bunch of ports you can attach to for testing
+    - containerPort: 30000  # This one is currently used by kafka, you can access kafka from localhost:30000
+      hostPort: 30000
+    - containerPort: 30001
+      hostPort: 30001
+    - containerPort: 30002
+      hostPort: 30002
+    - containerPort: 30003
+      hostPort: 30003
+    - containerPort: 30004
+      hostPort: 30004
+    - containerPort: 30005
+      hostPort: 30005
+      
