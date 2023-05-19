@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.*;
@@ -58,7 +59,7 @@ public class LSMTest {
     assertEquals(true, newSegment.exists());
   }
 
-  private void resetDataFolder() {
+  private static void resetDataFolder() {
     File dataFolder = new File(System.getProperty("user.dir").concat("/src/test/java/com/example/weatherstation/data"));
     for (File file : dataFolder.listFiles()) {
       file.delete();
@@ -66,12 +67,12 @@ public class LSMTest {
   }
 
   @Test
-  public void compactionGeneratesNewSegmentsAndUpdateKeyDirCorrectly() {
+  public void compactionGeneratesNewSegmentsAndUpdateKeyDirCorrectly() throws ClassNotFoundException, IOException {
     resetDataFolder();
     LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path)
         .build();
 
-    final int N = 4 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 10;
+    final int N = 10 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 10;
     for (int i = 0; i < N; i++) {
       lsm.put("key" + (i % 1000), "value" + (i % 1000));
     }
@@ -99,9 +100,10 @@ public class LSMTest {
   }
 
   @Test
-  public void purgingRemovesOldSegments() {
+  public void purgingRemovesOldSegments() throws ClassNotFoundException, IOException {
     resetDataFolder();
-    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
+    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path)
+        .delayBetweenCompactionAndPurgingMS(0)
         .build();
 
     final int N = 4 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 10;
@@ -116,7 +118,7 @@ public class LSMTest {
 
     // sleep for 100 ms
     try {
-      Thread.sleep(100);
+      Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -128,5 +130,94 @@ public class LSMTest {
     newSegment = new File(lsm.getDataFolderPath() + "/3.1");
     assertEquals(false, newSegment.exists());
 
+  }
+
+  @Test
+  public void purgingDoesNotRemovesOldSegmentsInTime() throws ClassNotFoundException, IOException {
+    resetDataFolder();
+    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path)
+        .delayBetweenCompactionAndPurgingMS(10000)
+        .build();
+
+    final int N = 4 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 10;
+    for (int i = 0; i < N; i++) {
+      lsm.put("key" + (i % 1000), "value" + (i % 1000));
+    }
+
+    /// assert that a new segment is created with a file name equal to 1
+    File newSegment = new File(lsm.getDataFolderPath() + "/1.1");
+    newSegment = new File(lsm.getDataFolderPath() + "/2.1");
+    lsm.compact();
+
+    // sleep for 100 ms
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    /// assert that a new segment is created with a file name equal to 1
+    newSegment = new File(lsm.getDataFolderPath() + "/1.1");
+    assertEquals(true, newSegment.exists());
+    newSegment = new File(lsm.getDataFolderPath() + "/2.1");
+    assertEquals(true, newSegment.exists());
+    newSegment = new File(lsm.getDataFolderPath() + "/3.1");
+    assertEquals(true, newSegment.exists());
+
+  }
+
+  @Test
+  public void canRecoverKeyDir() throws ClassNotFoundException, IOException {
+    resetDataFolder();
+    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
+        .build();
+
+    final int N = 3 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 14;
+    for (int i = 0; i < N; i++) {
+      lsm.put("key" + (i % 500000), "value" + (i % 500000));
+    }
+    // get keyDir
+    ConcurrentHashMap<String, ValueLocation> oldKeyDir = lsm.getKeyDir();
+
+    ConcurrentHashMap<String, ValueLocation> newKeyDir = lsm.generateKeyDirFromDisk();
+
+    // compare the two keyDirs
+    assertEquals(oldKeyDir.size(), newKeyDir.size());
+    for (String key : oldKeyDir.keySet()) {
+      assertEquals(oldKeyDir.get(key).getFile(), newKeyDir.get(key).getFile());
+      assertEquals(oldKeyDir.get(key).getOffset(), newKeyDir.get(key).getOffset());
+    }
+  }
+
+  @Test
+  public void canRecoverKeyDirAfterCompaction() throws ClassNotFoundException, IOException {
+    resetDataFolder();
+    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
+        .build();
+
+    final int N = 3 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 14;
+    for (int i = 0; i < N; i++) {
+      lsm.put("key" + (i % 500000), "value" + (i % 500000));
+    }
+    // compact
+    lsm.compact();
+
+    // get keyDir
+    ConcurrentHashMap<String, ValueLocation> oldKeyDir = lsm.getKeyDir();
+
+    ConcurrentHashMap<String, ValueLocation> newKeyDir = lsm.generateKeyDirFromDisk();
+
+    // compare the two keyDirs
+    assertEquals(oldKeyDir.size(), newKeyDir.size());
+    for (String key : oldKeyDir.keySet()) {
+      assertEquals(oldKeyDir.get(key).getFile(), newKeyDir.get(key).getFile());
+      assertEquals(oldKeyDir.get(key).getOffset(), newKeyDir.get(key).getOffset());
+    }
+  }
+
+  @AfterClass
+  public static void cleanUp() {
+    resetDataFolder();
+    File dataFolder = new File(System.getProperty("user.dir").concat("/src/test/java/com/example/weatherstation/data"));
+    dataFolder.delete();
   }
 }
