@@ -236,7 +236,6 @@ public class LSM<K, V> {
   }
 
   /*
-   * 
    * Writes a record to the segment and hint file and updates the keyDir
    */
   private synchronized void writeRecordWithHint(File file, K key, V value) throws IOException {
@@ -261,6 +260,39 @@ public class LSM<K, V> {
       writeHintFile(hintFile, key, offset);
     }
 
+  }
+
+  /*
+   * Writes a record to the segment and hint file and updates the keyDir only if
+   * the old keyDir offset is equal to the current offset
+   */
+  private synchronized void replaceRecordWithHint(File file, K key, V value) throws IOException {
+    byte[] keyBytes = convertToByteArray(key);
+    byte[] valueBytes = convertToByteArray(value);
+    ValueLocation oldValueLocation = keyDir.get(key);
+    if (oldValueLocation == null) {
+      writeRecordWithHint(file, key, value);
+      return;
+    }
+    try (FileOutputStream fileOutputStream = new FileOutputStream(file, true)) {
+      BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
+      int offset = (int) file.length();
+
+      writeBytesWithLength(keyBytes, fileOutputStream);
+      writeBytesWithLength(valueBytes, fileOutputStream);
+
+      bufferedOutputStream.flush();
+      bufferedOutputStream.close();
+      ValueLocation valueLocation = ValueLocation.builder().file(file.getName())
+          .offset(offset)
+          .build();
+      boolean success = keyDir.replace(key, oldValueLocation, valueLocation);
+
+      if (success) {
+        File hintFile = new File(file.getAbsolutePath().concat(".hint"));
+        writeHintFile(hintFile, key, offset);
+      }
+    }
   }
 
   private void writeHintFile(File file, K key, int offset) throws IOException {
@@ -502,7 +534,7 @@ public class LSM<K, V> {
       if (keyDir.containsKey(key)) {
         // write the record to the new segment
         // TODO: use replace here
-        writeRecordWithHint(newSegment, key, record.getValue());
+        replaceRecordWithHint(newSegment, key, record.getValue());
       } else {
         // skip the record
       }

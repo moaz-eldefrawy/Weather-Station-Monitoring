@@ -1,4 +1,4 @@
-package com.example.weatherstation;
+package com.example.weatherstation.models;
 
 import lombok.Builder;
 
