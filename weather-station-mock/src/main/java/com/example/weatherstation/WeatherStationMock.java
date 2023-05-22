@@ -8,6 +8,8 @@ import java.util.Properties;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
+import com.example.weatherstation.models.Status;
+
 public class WeatherStationMock {
 
 	public static final int SLEEP_TIME = 1000;
@@ -26,7 +28,7 @@ public class WeatherStationMock {
 
 				Status status = weatherStatusProducer.getNextWeatherStatus();
 				// create a producer record with key status.isNo and value as status
-				producer.send(new ProducerRecord(Constants.TOPIC,
+				producer.send(new ProducerRecord(Constants.WEATHER_STATION_STATUS_TOPIC,
 						status.getsNo().toString(), convertStatusToByteArray(status)));
         System.out.println("Produced a record: " + status.getsNo().toString());
 				Thread.sleep(SLEEP_TIME);

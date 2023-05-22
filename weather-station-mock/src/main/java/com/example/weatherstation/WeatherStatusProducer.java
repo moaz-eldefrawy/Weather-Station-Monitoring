@@ -4,13 +4,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 
+import com.example.weatherstation.models.Status;
+import com.example.weatherstation.models.Weather;
+
 public class WeatherStatusProducer {
   private Long isNoCounter = 1L;
 
   WeatherStatusProducer() {
   }
 
-  Status getNextWeatherStatus() {
+  public Status getNextWeatherStatus() {
     // create a dummy weather
     Weather weather = Weather.builder()
         .humidity(generateRandomNumberFromRange(0, 100))
@@ -27,6 +30,8 @@ public class WeatherStatusProducer {
         .weather(weather)
         .build();
   }
+
+  
 
   String getBatteryStatus() {
 

@@ -1,4 +1,4 @@
-package com.example.weatherstation;
+package com.example.weatherstation.models;
 
 import lombok.Builder;
 
@@ -11,7 +11,7 @@ public class Weather implements java.io.Serializable {
 
   public Integer getHumidity() {
     return humidity;
-  }
+  } 
 
   public Integer getTemperature() {
     return temperature;

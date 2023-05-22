@@ -14,6 +14,9 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+
+import com.example.weatherstation.models.Status;
+
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 public class HumidityDetector {
@@ -34,7 +37,7 @@ public class HumidityDetector {
 
     KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(properties);
     KafkaProducer<String, String> specialMessageProducer = new KafkaProducer<>(createProduceProps());
-    consumer.subscribe(Collections.singleton(Constants.TOPIC));
+    consumer.subscribe(Collections.singleton(Constants.WEATHER_STATION_STATUS_TOPIC));
 
     while (true) {
       ConsumerRecords<String, byte[]> records = consumer.poll(Duration.ofMillis(100));
@@ -44,7 +47,6 @@ public class HumidityDetector {
           System.out.println(status.toString());
           if (status.getWeather().getHumidity() > HUMIDITY_THRESHOLD) {
             // send message to topic
-
             specialMessageProducer.send(new ProducerRecord<String, String>(Constants.HUMIDITY_NOTIFICATION_TOPIC, "key",
                 "Some Special Message of " + status.getWeather().getHumidity().toString()));
           }
