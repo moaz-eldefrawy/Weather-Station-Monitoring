@@ -1,0 +1,9 @@
+message Status {
+  optional int64 stationId;
+  optional int64 sNo;
+  optional binary batteryStatus;
+  optional int64 statusTimestamp;
+  optional int32 weatherHumidity;
+  optional int32 weatherTemperature;
+  optional int32 weatherWindSpeed;
+}
