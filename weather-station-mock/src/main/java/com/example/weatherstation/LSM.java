@@ -27,9 +27,10 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import com.google.common.base.Optional;
+
 import lombok.Builder;
 
-@Builder(builderMethodName = "builder")
 public class LSM<K, V> {
   public static void main(String[] args) {
     // in memory HashMap <Key(type1), file and offset(Long)>
@@ -114,32 +115,25 @@ public class LSM<K, V> {
   /*
    * Initial version of the LSM segment
    */
-  @Builder.Default
   private String initialVersion = ".1";
 
   /*
    * Segment size threshold in kilo bytes
    */
-  @Builder.Default
   private int segmentSizeThreshold = 10;
 
   /*
    * Path of the folder that contains the segments
    */
-  // TODO: use OS seperator
-  @Builder.Default
-  private String dataFolderPath = System.getProperty("user.dir").concat("/data");
+  private String dataFolderPath = System.getProperty("user.dir").concat(File.separator + Constants.LSM_DATA_FOLDER);
 
   /*
    * Id of the last segment file being written to. (auto incrementing id)
    */
-  @Builder.Default
   private long activeSegmentId = 0;
 
-  @Builder.Default
-  private final int delayBetweenCompactionAndPurgingMS = 3600000;
+  private int delayBetweenCompactionAndPurgingMS = 3600000;
 
-  @Builder.Default
   private ConcurrentHashMap<K, ValueLocation> keyDir = new ConcurrentHashMap<>();
 
   /*
@@ -342,7 +336,7 @@ public class LSM<K, V> {
     for (File segment : segmentsToCompact) {
       File newSegment = compactSegment(segment);
       compactedSegments.add(segment);
-      // detete old hint file if it exists
+      // delete old hint file if it exists
       File oldHintFile = new File(segment.getAbsolutePath().concat(".hint"));
       oldHintFile.delete();
 
@@ -351,6 +345,23 @@ public class LSM<K, V> {
     Timer timer = new Timer();
     timer.schedule(new DeleteOldSegmentsTask(compactedSegments), delayBetweenCompactionAndPurgingMS);
     return;
+  }
+
+  /*
+   * merges file2 to file1
+   */
+  private File mergeFiles(File file1, File file2) throws FileNotFoundException {
+    FileInputStream fileInputStream = new FileInputStream(file2);
+    FileOutputStream fileOutputStream = new FileOutputStream(file2, true);
+
+    Tuple<K, V> record;
+    int offset = 0;
+    while (offset < file2.length()) {
+      record = readRecord(fileInputStream, offset);
+      
+      
+    }
+    fos.close();
   }
 
   private synchronized void purgeOldCopies() {
@@ -577,6 +588,81 @@ public class LSM<K, V> {
 
     public void run() {
       compactedSegments.forEach(segment -> purgeSegment(segment));
+    }
+
+  }
+
+  private static int getLatestSegmentId(String folderPath) {
+    File file = new File(folderPath);
+    if (file.exists()) {
+      List<File> files = Arrays.asList(file.listFiles());
+      return files.stream().map(f -> f.getName().split("\\.")[0])
+          .distinct().mapToInt(Integer::valueOf).max().orElse(0);
+
+    } else {
+      file.mkdirs();
+      return 0;
+    }
+  }
+
+  public static class Builder<K, V> {
+    private String initialVersion;
+    private int segmentSizeThreshold;
+    private String dataFolderPath;
+    private long activeSegmentId;
+    private int delayBetweenCompactionAndPurgingMS;
+    private ConcurrentHashMap<K, ValueLocation> keyDir;
+
+    public Builder() {
+      // Set default values if needed
+      this.initialVersion = ".1";
+      this.segmentSizeThreshold = 10;
+      this.dataFolderPath = System.getProperty("user.dir").concat(File.separator + Constants.LSM_DATA_FOLDER);
+      this.activeSegmentId = 0;
+      this.delayBetweenCompactionAndPurgingMS = 3600000;
+      this.keyDir = new ConcurrentHashMap<>();
+    }
+
+    public Builder<K, V> initialVersion(String initialVersion) {
+      this.initialVersion = initialVersion;
+      return this;
+    }
+
+    public Builder<K, V> segmentSizeThreshold(int segmentSizeThreshold) {
+      this.segmentSizeThreshold = segmentSizeThreshold;
+      return this;
+    }
+
+    public Builder<K, V> dataFolderPath(String dataFolderPath) {
+      this.dataFolderPath = dataFolderPath;
+      return this;
+    }
+
+    public Builder<K, V> activeSegmentId(long activeSegmentId) {
+      this.activeSegmentId = activeSegmentId;
+      return this;
+    }
+
+    public Builder<K, V> delayBetweenCompactionAndPurgingMS(int delayBetweenCompactionAndPurgingMS) {
+      this.delayBetweenCompactionAndPurgingMS = delayBetweenCompactionAndPurgingMS;
+      return this;
+    }
+
+    public Builder<K, V> keyDir(ConcurrentHashMap<K, ValueLocation> keyDir) {
+      this.keyDir = keyDir;
+      return this;
+    }
+
+    public LSM<K, V> build() throws ClassNotFoundException, IOException {
+      LSM<K, V> myClass = new LSM<>();
+      myClass.initialVersion = this.initialVersion;
+      myClass.segmentSizeThreshold = this.segmentSizeThreshold;
+      myClass.dataFolderPath = this.dataFolderPath;
+      myClass.delayBetweenCompactionAndPurgingMS = this.delayBetweenCompactionAndPurgingMS;
+      myClass.keyDir = this.keyDir;
+      myClass.activeSegmentId = getLatestSegmentId(dataFolderPath);
+      myClass.generateKeyDirFromDisk();
+      return myClass;
     }
   }
 

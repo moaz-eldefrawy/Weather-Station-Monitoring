@@ -28,9 +28,9 @@ public class LSMTest {
   }
 
   @Test
-  public void canPutAndGetData() {
+  public void canPutAndGetData() throws ClassNotFoundException, IOException {
     String str = "value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3value3";
-    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(
+    LSM<String, String> lsm = new LSM.Builder().dataFolderPath(
         path)
         .build();
     lsm.put("key1", "value1");
@@ -44,9 +44,9 @@ public class LSMTest {
   }
 
   @Test
-  public void generatesNewSegment() {
+  public void generatesNewSegment() throws ClassNotFoundException, IOException {
     resetDataFolder();
-    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path)
+    LSM<String, String> lsm = new LSM.Builder().dataFolderPath(path)
         .build();
     for (int i = 0; i < 2 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 10; i++) {
       lsm.put("key1" + i, "value1" + i); // around 11 + 13 + 4 * 2 = 32 bytes
@@ -69,7 +69,7 @@ public class LSMTest {
   @Test
   public void compactionGeneratesNewSegmentsAndUpdateKeyDirCorrectly() throws ClassNotFoundException, IOException {
     resetDataFolder();
-    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path)
+    LSM<String, String> lsm = new LSM.Builder().dataFolderPath(path)
         .build();
 
     final int N = 10 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 10;
@@ -102,7 +102,7 @@ public class LSMTest {
   @Test
   public void purgingRemovesOldSegments() throws ClassNotFoundException, IOException {
     resetDataFolder();
-    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path)
+    LSM<String, String> lsm = new LSM.Builder().dataFolderPath(path)
         .delayBetweenCompactionAndPurgingMS(0)
         .build();
 
@@ -135,7 +135,7 @@ public class LSMTest {
   @Test
   public void purgingDoesNotRemovesOldSegmentsInTime() throws ClassNotFoundException, IOException {
     resetDataFolder();
-    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path)
+    LSM<String, String> lsm = new LSM.Builder().dataFolderPath(path)
         .delayBetweenCompactionAndPurgingMS(10000)
         .build();
 
@@ -168,7 +168,7 @@ public class LSMTest {
   @Test
   public void canRecoverKeyDir() throws ClassNotFoundException, IOException {
     resetDataFolder();
-    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
+    LSM<String, String> lsm = new LSM.Builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
         .build();
 
     final int N = 3 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 14;
@@ -191,7 +191,7 @@ public class LSMTest {
   @Test
   public void canRecoverKeyDirAfterCompaction() throws ClassNotFoundException, IOException {
     resetDataFolder();
-    LSM<String, String> lsm = LSM.<String, String>builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
+    LSM<String, String> lsm = new LSM.Builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
         .build();
 
     final int N = 3 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 14;
@@ -214,10 +214,39 @@ public class LSMTest {
     }
   }
 
+  @Test
+  public void canRecoverLSM() throws ClassNotFoundException, IOException {
+    resetDataFolder();
+    LSM<String, String> lsm = new LSM.Builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
+        .build();
+
+    final int N = 10 * lsm.getSegmentSizeThreshold() * 1024 / 32 + 10;
+    for (int i = 0; i < N; i++) {
+      lsm.put("key" + (i % 1000), "value" + (i % 1000));
+    }
+
+    lsm.compact();
+    
+    lsm = null;
+
+    LSM<String, String> lsm2 = new LSM.Builder().dataFolderPath(path).delayBetweenCompactionAndPurgingMS(0)
+        .build();
+    // assert all the values
+    for (int i = 0; i < N; i++) {
+      assertEquals("value" + (i % 1000), lsm2.get("key" + (i % 1000)));
+    }
+
+    // assert that the key dir is updated correctly
+    ConcurrentHashMap<String, ValueLocation> keyDir = lsm2.getKeyDir();
+    assertEquals(1000, keyDir.size());
+
+  }
+
   @AfterClass
   public static void cleanUp() {
-    resetDataFolder();
-    File dataFolder = new File(System.getProperty("user.dir").concat("/src/test/java/com/example/weatherstation/data"));
-    dataFolder.delete();
+    // resetDataFolder();
+    // File dataFolder = new
+    // File(System.getProperty("user.dir").concat("/src/test/java/com/example/weatherstation/data"));
+    // dataFolder.delete();
   }
 }
