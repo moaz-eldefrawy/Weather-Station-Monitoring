@@ -15,7 +15,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
-import com.example.centralstation.models.Status;
+import com.example.weatherstation.models.Status;
 
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 

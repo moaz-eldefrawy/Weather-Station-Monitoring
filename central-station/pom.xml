@@ -75,6 +75,12 @@
       <artifactId>elasticsearch-java</artifactId>
       <version>7.17.9</version>
     </dependency>
+    <!-- Hopefully use the weather station package from the maven local repository  -->
+    <dependency>
+      <groupId>com.example</groupId>
+      <artifactId>weather-station</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
 
     <!-- <dependency>
         <groupId>org.springframework.boot</groupId>

@@ -23,7 +23,7 @@ import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
-import com.example.centralstation.models.Status;
+import com.example.weatherstation.models.Status;
 
 public class StatusParquetWriter {
 

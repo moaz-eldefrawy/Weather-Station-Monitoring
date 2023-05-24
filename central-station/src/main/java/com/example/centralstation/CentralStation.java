@@ -16,7 +16,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
-import com.example.centralstation.models.Status;
+import com.example.weatherstation.models.Status;
 
 public class CentralStation {
   static final int HUMIDITY_THRESHOLD = 70;
@@ -49,6 +49,7 @@ public class CentralStation {
 
         for (ConsumerRecord<String, byte[]> record : records) {
           Status status = convertByteArrayToStatus(record.value());
+          System.out.println("Consumed something: " + status.toString());
 
           // TODO: make a separate class for this
           if (status.getWeather().getHumidity() > HUMIDITY_THRESHOLD) {

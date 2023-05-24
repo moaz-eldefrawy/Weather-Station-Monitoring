@@ -1,7 +1,7 @@
 package com.example.centralstation;
 
-import com.example.centralstation.models.Status;
-import com.example.centralstation.models.Weather;
+import com.example.weatherstation.models.Status;
+import com.example.weatherstation.models.Weather;
 
 public class WeatherStatusProducer {
   private Long isNoCounter = 1L;

@@ -9,7 +9,7 @@ import java.util.Map;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
 
-import com.example.centralstation.models.Status;
+import com.example.weatherstation.models.Status;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
