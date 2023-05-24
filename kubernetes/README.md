@@ -8,7 +8,7 @@ This is a documentation of the steps I followed to run a kubernetes cluster loca
 # Run
 
 1. Create a cluster with: `kind create cluster --config kubernetes\kind-config.yaml`. This create a cluster named "kind"
-2. Load docker images that will be used by the cluster: `kind load docker-image weather-station-mock:1.0.0 bitnami/kafka:3.4.0`
+2. Load docker images that will be used by the cluster: `kind load docker-image weather-station-mock:1.0.0 central-station:1.0.0 bitnami/kafka:3.4.0`
 3. Set kubectl context to the created cluster `kubectl config use-context kind-kind`
 4. Start kafka: `kubectl apply -f kubernetes\kafka.yaml`
 5. (Optional) Verify everthing is working: `kubectl get pods -o wide`
