@@ -5,6 +5,7 @@ This is a documentation of the steps I followed to run a kubernetes cluster loca
 1. Install kubectl: [link](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/#install-kubectl-binary-with-curl-on-windows)
 2. Install kind: [link](https://kind.sigs.k8s.io/docs/user/quick-start/#installation). I downloaded the release binary from [here](https://github.com/kubernetes-sigs/kind/releases), renamed it to kind.exe, and add it to the environment variables.
 3. Pull the needed images locally: `docker pull bitnami/kafka:3.4.0`
+
 # Run
 
 1. Create a cluster with: `kind create cluster --config kubernetes\kind-config.yaml`. This create a cluster named "kind"
@@ -17,6 +18,7 @@ This is a documentation of the steps I followed to run a kubernetes cluster loca
 8. Start the central-station: `kubectl apply -f kubernetes\central-station.yaml`
 
 ### Helpful Commands
+
 Delete the cluster: `kind delete cluster -n kind`\
 Stop a "service": `kubectl delete -f kubernetes\kafka.yaml`\
 Shell into a service: `kubectl exec --stdin --tty kafka -- /bin/bash`

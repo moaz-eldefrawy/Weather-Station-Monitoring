@@ -17,8 +17,8 @@ nodes:
     - containerPort: 30005
       hostPort: 30005
     extraMounts:
-      - hostPath: /parquet-data
+      - hostPath: ./parquet-data
         containerPath: /parquet-data
-      - hostPath: /lsm-data
+      - hostPath: ./lsm-data
         containerPath: /lsm-data
 

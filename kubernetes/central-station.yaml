@@ -1,19 +1,10 @@
-apiVersion: apps/v1
-kind: ReplicaSet
+apiVersion: v1
+kind: Pod
 metadata:
   name: central-station
   labels:
     app: central-station
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: central-station
-  template:
-    metadata:
-      labels:
-        app: central-station
-    spec:
-      containers:
-      - name: central-station
-        image: central-station:1.0.0
+  containers:
+    - name: central-station
+      image: central-station:1.0.0
