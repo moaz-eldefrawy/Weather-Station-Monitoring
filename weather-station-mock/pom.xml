@@ -54,16 +54,28 @@
       <artifactId>hadoop-common</artifactId>
       <version>3.3.5</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-mapreduce-client-core -->
     <dependency>
-        <groupId>org.apache.parquet</groupId>
-        <artifactId>parquet-avro</artifactId>
-        <version>1.12.0</version>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <version>3.3.5</version>
     </dependency>
     <dependency>
-        <groupId>org.apache.avro</groupId>
-        <artifactId>avro</artifactId>
-        <version>1.10.0</version>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-avro</artifactId>
+      <version>1.12.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.avro</groupId>
+      <artifactId>avro</artifactId>
+      <version>1.10.0</version>
+    </dependency>
+    <dependency>
+      <groupId>co.elastic.clients</groupId>
+      <artifactId>elasticsearch-java</artifactId>
+      <version>7.17.9</version>
+    </dependency>
+
     <!-- <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter</artifactId>
@@ -97,14 +109,14 @@
         <plugin>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.8.0</version>
-           <configuration>
-              <annotationProcessorPaths>
-                  <path>
-                      <groupId>org.projectlombok</groupId>
-                      <artifactId>lombok</artifactId>
-                      <version>1.18.20</version>
-                  </path>
-              </annotationProcessorPaths>
+          <configuration>
+            <annotationProcessorPaths>
+              <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>1.18.20</version>
+              </path>
+            </annotationProcessorPaths>
           </configuration>
         </plugin>
         <plugin>
