@@ -5,6 +5,18 @@ metadata:
   labels:
     app: central-station
 spec:
+  volumes:
+    - name: lsm-data
+      persistentVolumeClaim:
+        claimName: lsm-pv-claim
+    - name: parquet-data
+      persistentVolumeClaim:
+        claimName: parquet-pv-claim
   containers:
     - name: central-station
       image: central-station:1.0.0
+      volumeMounts:
+        - mountPath: "/lsm-data"
+          name: lsm-data
+        - mountPath: "/parquet-data"
+          name: parquet-data
