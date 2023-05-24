@@ -16,5 +16,6 @@ RUN mvn -f ${HOME}/pom.xml assembly:assembly
 #
 FROM openjdk:11-jre-slim 
 COPY --from=build /usr/app/target/central-station.jar /usr/app/central-station.jar 
+COPY --from=build /usr/app/parquet.schema /parquet.schema 
 EXPOSE 8080
 CMD ["java","-jar","/usr/app/central-station.jar"]  

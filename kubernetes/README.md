@@ -14,6 +14,7 @@ This is a documentation of the steps I followed to run a kubernetes cluster loca
 5. (Optional) Verify everthing is working: `kubectl get pods -o wide`
 6. Start the weather-station-mock: `kubectl apply -f kubernetes\weather-station-mock.yaml`
 7. Check that the weather station is producing records: `kubectl exec --stdin --tty kafka -- /bin/bash`, then `kafka-console-consumer.sh --topic weather-station-status --from-beginning --bootstrap-server kafka:9092` and wait a few moments
+8. Start the central-station: `kubectl apply -f kubernetes\central-station.yaml`
 
 ### Helpful Commands
 Delete the cluster: `kind delete cluster -n kind`\
