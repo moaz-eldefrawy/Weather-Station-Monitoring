@@ -33,6 +33,7 @@ public class CentralStation {
     lsmDir.mkdirs();
     parquetDir.mkdirs();
     StatusParquetWriter statusParquetWriter;
+    ElasticSearchStatusWriter elasticSearchStatusWriter = new ElasticSearchStatusWriter();
     LSM lsm;
     try {
       lsm = new LSM.Builder<>().build();
@@ -63,8 +64,11 @@ public class CentralStation {
                 "Some Special Message of " + status.getWeather().getHumidity().toString()));
           }
 
+          System.out.println(status.toString());
+
           statusParquetWriter.write(status);
           lsm.put(status.getStationId(), status);
+          // elasticSearchStatusWriter.write(status);
         }
       }
     } catch (Exception e) {

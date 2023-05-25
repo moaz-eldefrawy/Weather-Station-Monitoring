@@ -360,19 +360,20 @@ public class LSM<K, V> {
   /*
    * merges(adds) file2 to file1
    */
-  private File mergeFiles(File file1, File file2) throws ClassNotFoundException, IOException {
-    FileInputStream fileInputStream = new FileInputStream(file2);
-    FileOutputStream fileOutputStream = new FileOutputStream(file2, true);
+  // private File mergeFiles(File file1, File file2) throws
+  // ClassNotFoundException, IOException {
+  // FileInputStream fileInputStream = new FileInputStream(file2);
+  // FileOutputStream fileOutputStream = new FileOutputStream(file2, true);
 
-    Tuple<K, V> record;
-    int offset = 0;
-    while (offset < file2.length()) {
-      record = readRecord(fileInputStream, offset);
-      writeRecordWithHint(file1, record.key, record.value);
-      offset = record.endOffset;
-    }
-    fileOutputStream.close();
-  }
+  // Tuple<K, V> record;
+  // int offset = 0;
+  // while (offset < file2.length()) {
+  // record = readRecord(fileInputStream, offset);
+  // writeRecordWithHint(file1, record.key, record.value);
+  // offset = record.endOffset;
+  // }
+  // fileOutputStream.close();
+  // }
 
   private synchronized void purgeOldCopies() {
     File file = new File(dataFolderPath);

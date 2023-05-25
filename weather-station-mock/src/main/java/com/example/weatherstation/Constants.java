@@ -7,4 +7,5 @@ public class Constants {
   public static final String WEATHER_STATION_STATUS_TOPIC = "weather-station-status";
   public static final String HUMIDITY_NOTIFICATION_TOPIC = "humidity-notification";
   public static final String LSM_DATA_FOLDER = "lsm-data";
+  public static final String INDEX_NAME = "weather-status";
 }

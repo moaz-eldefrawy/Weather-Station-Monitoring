@@ -21,16 +21,14 @@ public class WeatherStationMock {
 		while (true) {
 			try {
 
-				// drop 10% of the messages
-				if (generateRandomNumberFromOneToTen() == 10) {
-					continue;
-				}
-
 				Status status = weatherStatusProducer.getNextWeatherStatus();
-				// create a producer record with key status.isNo and value as status
-				producer.send(new ProducerRecord(Constants.WEATHER_STATION_STATUS_TOPIC,
-						status.getsNo().toString(), convertStatusToByteArray(status)));
-
+				System.out.println(generateRandomNumberFromOneToTen());
+				// drop 10% of the messages
+				if (generateRandomNumberFromOneToTen() != 1) {
+					// create a producer record with key status.isNo and value as status
+					producer.send(new ProducerRecord(Constants.WEATHER_STATION_STATUS_TOPIC,
+							status.getsNo().toString(), convertStatusToByteArray(status)));
+				}
 				Thread.sleep(SLEEP_TIME);
 			} catch (Exception e) {
 				e.printStackTrace();
