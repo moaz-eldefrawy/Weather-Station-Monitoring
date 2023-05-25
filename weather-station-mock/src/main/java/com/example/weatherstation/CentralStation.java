@@ -8,6 +8,8 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Properties;
 
+import javax.management.RuntimeErrorException;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -25,7 +27,7 @@ public class CentralStation {
   static final String PARQUET_FOLDER = "parquet-data";
   static final String PARQUET_SCHEMA = "parquet.schema";
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(createConsumerProps());
     KafkaProducer<String, String> specialMessageProducer = new KafkaProducer<>(createProduceProps());
     File lsmDir = new File(LSM_FOLDER);
@@ -34,6 +36,13 @@ public class CentralStation {
     lsmDir.mkdirs();
     parquetDir.mkdirs();
     StatusParquetWriter statusParquetWriter;
+    LSM lsm;
+    try {
+      lsm = new LSM.Builder<>().build();
+    } catch (ClassNotFoundException | IOException e) {
+      System.out.println("could not generate the LSM");
+      throw new Exception(e);
+    }
     try {
       statusParquetWriter = new StatusParquetWriter(parquetDir, parquetSchema);
     } catch (IOException e) {
@@ -58,7 +67,7 @@ public class CentralStation {
           }
 
           statusParquetWriter.write(status);
-
+          lsm.put(status.getStationId(), status);
         }
       }
     } catch (Exception e) {
