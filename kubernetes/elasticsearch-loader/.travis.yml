@@ -1,0 +1,14 @@
+before_install:
+  - sudo apt-get update
+  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
+language: python
+env:
+  matrix:
+    - PYTHON=3.7 ES=docker.elastic.co/elasticsearch/elasticsearch:8.1.2
+    - PYTHON=3.7 ES=docker.elastic.co/elasticsearch/elasticsearch:7.1.1
+    - PYTHON=3.7 ES=docker.elastic.co/elasticsearch/elasticsearch:6.8.0
+    - PYTHON=3.7 ES=docker.elastic.co/elasticsearch/elasticsearch:5.6.16
+    - PYTHON=3.7 ES=elasticsearch:2.4.6-alpine
+script:
+  - docker-compose --version
+  - docker-compose up --build --abort-on-container-exit

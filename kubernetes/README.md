@@ -8,8 +8,10 @@ This is a documentation of the steps I followed to run a kubernetes cluster loca
 
 # Run
 
+Build all the required images: weather station, central station, loader
+
 1. Create a cluster with: `kind create cluster --config kubernetes\kind-config.yaml`. This create a cluster named "kind"
-2. Load docker images that will be used by the cluster: `kind load docker-image weather-station-mock:1.0.0 central-station:1.0.0 bitnami/kafka:3.4.0`
+2. Load docker images that will be used by the cluster: `kind load docker-image weather-station-mock:1.0.0 central-station:1.0.0 bitnami/kafka:3.4.0 docker.elastic.co/elasticsearch/elasticsearch:8.7.0 docker.elastic.co/kibana/kibana:8.7.0 loader:1.0.0`
 3. Set kubectl context to the created cluster `kubectl config use-context kind-kind`
 4. Start kafka: `kubectl apply -f kubernetes\kafka.yaml`
 5. (Optional) Verify everthing is working: `kubectl get pods -o wide`
@@ -17,7 +19,7 @@ This is a documentation of the steps I followed to run a kubernetes cluster loca
 7. Check that the weather station is producing records: `kubectl exec --stdin --tty kafka -- /bin/bash`, then `kafka-console-consumer.sh --topic weather-station-status --from-beginning --bootstrap-server kafka:9092` and wait a few moments
 8. Create the persistent volumes and claims: `kubectl apply -f kubernetes\pvs.yaml`
 9. Start the central-station: `kubectl apply -f kubernetes\central-station.yaml`
-
+10. Start elastic search: `kubectl apply -f kubernetes\elastic.yaml`
 ### Helpful Commands
 
 Delete the cluster: `kind delete cluster -n kind`\

@@ -6,21 +6,14 @@ metadata:
   labels:
     app: test
 spec:
+  volumes:
+    - name: parquet-data
+      persistentVolumeClaim:
+        claimName: parquet-pv-claim
   containers:
     - name: test
-      image: nginxdemos/hello
-      ports:
-        - containerPort: 80
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: test
-spec:
-  type: NodePort
-  selector:
-    app: test
-  ports:
-    - port: 8001
-      targetPort: 80
-      nodePort: 30000
+      image: eclipse-temurin:11
+      volumeMounts:
+        - mountPath: "/parquet-data"
+          name: parquet-data
+

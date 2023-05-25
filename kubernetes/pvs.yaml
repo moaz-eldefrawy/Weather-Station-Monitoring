@@ -48,7 +48,7 @@ metadata:
 spec:
   storageClassName: manual
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany # Elastic search also want to read this volume
   resources:
     requests:
       storage: 2Gi
