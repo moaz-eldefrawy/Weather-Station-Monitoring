@@ -130,7 +130,7 @@ public class LSM<K, V> {
   /*
    * Id of the last segment file being written to. (auto incrementing id)
    */
-  public long activeSegmentId = 0;
+  private long activeSegmentId = 0;
 
   private int delayBetweenCompactionAndPurgingMS = 3600000;
 
