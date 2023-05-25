@@ -3,22 +3,21 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
   - role: worker
-    extraPortMappings:  # A bunch of ports you can attach to for testing
-    - containerPort: 30000 # This one is currently used by kafka, you can access kafka from localhost:30000
-      hostPort: 30000  
-    - containerPort: 30001 # This one is used by elastic search
-      hostPort: 30001
-    - containerPort: 30002 # This one is used by kibana
-      hostPort: 30002
-    - containerPort: 30003
-      hostPort: 30003
-    - containerPort: 30004
-      hostPort: 30004
-    - containerPort: 30005
-      hostPort: 30005
+    extraPortMappings: # A bunch of ports you can attach to for testing
+      - containerPort: 30000 # This one is currently used by kafka, you can access kafka from localhost:30000
+        hostPort: 30000
+      - containerPort: 30001 # This one is used by elastic search
+        hostPort: 30001
+      - containerPort: 30002 # This one is used by kibana
+        hostPort: 30002
+      - containerPort: 30003
+        hostPort: 30003
+      - containerPort: 30004
+        hostPort: 30004
+      - containerPort: 30005
+        hostPort: 30005
     extraMounts:
-      - hostPath: ./parquet-data
-        containerPath: /parquet-data
-      - hostPath: ./lsm-data
-        containerPath: /lsm-data
-
+      - hostPath: ./data-1
+        containerPath: /data-1
+      - hostPath: ./data-2
+        containerPath: /data-2

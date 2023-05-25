@@ -32,6 +32,7 @@ public class StatusParquetWriter {
   File outputDir;
   MessageType schema;
   int fileId;
+  public boolean log = false;
   /*
    * Map from station id to list of status records for that station
    */
@@ -60,7 +61,8 @@ public class StatusParquetWriter {
       this.statusRecords.put(stationId, new ArrayList<>());
     }
     this.statusRecords.get(stationId).add(status);
-
+    if (log)
+      System.out.println("Parquet " + stationId + " batch size " + this.statusRecords.get(stationId).size());
     if (this.statusRecords.get(stationId).size() >= BATCH_SIZE) {
       StatusParquetWriterHelper.writeToParquet(statusRecords.get(stationId), schema,
           new Path(outputDir.getAbsolutePath() + File.separator + fileId++ + "." + stationId + ".parquet"));

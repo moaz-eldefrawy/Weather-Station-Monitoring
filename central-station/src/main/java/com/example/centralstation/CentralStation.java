@@ -34,7 +34,8 @@ public class CentralStation {
     parquetDir.mkdirs();
     StatusParquetWriter statusParquetWriter;
     try {
-      statusParquetWriter = new StatusParquetWriter(parquetDir, parquetSchema, 100);
+      statusParquetWriter = new StatusParquetWriter(parquetDir, parquetSchema, 50);
+      statusParquetWriter.log = true;
     } catch (IOException e) {
       // rethrow e with message that we couldn't read the schema file
       throw new RuntimeException("Couldn't read schema file", e);
