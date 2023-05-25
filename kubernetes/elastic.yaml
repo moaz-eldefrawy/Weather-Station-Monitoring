@@ -6,6 +6,10 @@ metadata:
   labels:
     app: elasticsearch
 spec:
+  volumes:
+    - name: parquet-data
+      persistentVolumeClaim:
+        claimName: parquet-pv-claim
   containers:
     - name: elasticsearch
       image: docker.elastic.co/elasticsearch/elasticsearch:8.7.0
@@ -24,6 +28,12 @@ spec:
       env:
         - name: ELASTICSEARCH_HOSTS
           value: http://elasticsearch:9200
+    - name: loader
+      image: loader:1.0.0
+      volumeMounts:
+        - mountPath: "/parquet-data"
+          name: parquet-data
+
 ---
 apiVersion: v1
 kind: Service
@@ -42,4 +52,3 @@ spec:
       port: 5601
       targetPort: 5601
       nodePort: 30002
-

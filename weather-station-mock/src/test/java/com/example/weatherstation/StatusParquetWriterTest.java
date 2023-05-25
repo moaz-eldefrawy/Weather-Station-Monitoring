@@ -30,7 +30,7 @@ public class StatusParquetWriterTest {
     File parquetDir = new File(PARQUET_FOLDER);
     File parquetSchema = new File(PARQUET_SCHEMA);
     StatusParquetWriter statusParquetWriter = new StatusParquetWriter(parquetDir, parquetSchema);
-    WeatherStatusProducer weatherStatusProducer = new WeatherStatusProducer();
+    WeatherStatusProducer weatherStatusProducer = new WeatherStatusProducer(1);
 
     weatherStatusProducer.getBatteryStatus();
     // generate 20000 records for station 1 to 10

@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: lsm-data
+  name: data-1
   labels:
     type: local
 spec:
@@ -10,14 +10,14 @@ spec:
   capacity:
     storage: 3Gi
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   hostPath:
-    path: "/lsm-data"
+    path: "/data-1"
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: parquet-data
+  name: data-2
   labels:
     type: local
 spec:
@@ -25,9 +25,9 @@ spec:
   capacity:
     storage: 3Gi
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   hostPath:
-    path: "/parquet-data"
+    path: "/data-2"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -36,7 +36,7 @@ metadata:
 spec:
   storageClassName: manual
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 2Gi

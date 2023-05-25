@@ -1,16 +1,14 @@
 package com.example.weatherstation;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-
 import com.example.weatherstation.models.Status;
 import com.example.weatherstation.models.Weather;
 
 public class WeatherStatusProducer {
   private Long isNoCounter = 1L;
+  private Long stationId;
 
-  WeatherStatusProducer() {
+  WeatherStatusProducer(int stationId) {
+    this.stationId = (long) stationId;
   }
 
   public Status getNextWeatherStatus() {
@@ -23,7 +21,7 @@ public class WeatherStatusProducer {
 
     // TODO(woofy): get station id from env variable
     return Status.builder()
-        .stationId(1L)
+        .stationId(stationId)
         .sNo(isNoCounter++)
         .batteryStatus(getBatteryStatus())
         .statusTimestamp(System.currentTimeMillis())

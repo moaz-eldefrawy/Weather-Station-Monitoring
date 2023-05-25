@@ -6,4 +6,5 @@ RUN cd /app && \
 
 RUN pip install python-snappy
 RUN pip install 'elasticsearch-loader[parquet]'
+RUN pip install watchdog
 #  elasticsearch_loader --index test --es-host http://host.docker.internal:30001 parquet parquet-data/9.5.parquet 

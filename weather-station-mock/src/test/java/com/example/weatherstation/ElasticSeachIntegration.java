@@ -11,7 +11,7 @@ public class ElasticSeachIntegration {
   @Test
   public void test() throws ElasticsearchException, IOException {
     ElasticSearchStatusWriter elasticSearchStatusWriter = new ElasticSearchStatusWriter();
-    WeatherStatusProducer weatherStatusProducer = new WeatherStatusProducer();
+    WeatherStatusProducer weatherStatusProducer = new WeatherStatusProducer(1);
     for (int i = 0; i < 1; i++) {
       elasticSearchStatusWriter.write(weatherStatusProducer.getNextWeatherStatus());
     }

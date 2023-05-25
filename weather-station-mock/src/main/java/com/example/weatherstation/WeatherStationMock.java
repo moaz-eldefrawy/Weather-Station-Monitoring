@@ -15,7 +15,10 @@ public class WeatherStationMock {
 	public static final int SLEEP_TIME = 1000;
 
 	public static void main(String[] args) {
-		WeatherStatusProducer weatherStatusProducer = new WeatherStatusProducer();
+    System.out.println("CL args " + args.toString());
+    int stationId = Integer.parseInt(args[0]);
+    System.out.println("Station Id: " + stationId);
+		WeatherStatusProducer weatherStatusProducer = new WeatherStatusProducer(stationId);
 		KafkaProducer<String, byte[]> producer = createProducer();
 
 		while (true) {
