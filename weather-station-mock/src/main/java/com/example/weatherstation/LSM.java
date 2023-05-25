@@ -130,7 +130,7 @@ public class LSM<K, V> {
   /*
    * Id of the last segment file being written to. (auto incrementing id)
    */
-  private long activeSegmentId = 0;
+  public long activeSegmentId = 0;
 
   private int delayBetweenCompactionAndPurgingMS = 3600000;
 
@@ -329,17 +329,27 @@ public class LSM<K, V> {
 
         long segmentId = Long.valueOf(name.split("\\.")[0]);
         return segmentId < activeSegmentId && name.split("\\.").length == 2;
-        // return segmentId < activeSegmentId;
       }
     });
 
+    sortFiles(segmentsToCompact);
+
+    File currMergeSegment = null;
+
     for (File segment : segmentsToCompact) {
-      File newSegment = compactSegment(segment);
+      if (currMergeSegment == null) {
+        currMergeSegment = new File(dataFolderPath, getNewSegmentVersionName(segment.getName()));
+      } else if (currMergeSegment.length() / 1024 > segmentSizeThreshold) {
+        currMergeSegment = new File(dataFolderPath, getNextSegment(currMergeSegment.getName()));
+      } else {
+        currMergeSegment = currMergeSegment;
+      }
+
+      compactSegment(currMergeSegment, segment);
       compactedSegments.add(segment);
       // delete old hint file if it exists
       File oldHintFile = new File(segment.getAbsolutePath().concat(".hint"));
       oldHintFile.delete();
-
     }
 
     Timer timer = new Timer();
@@ -348,9 +358,9 @@ public class LSM<K, V> {
   }
 
   /*
-   * merges file2 to file1
+   * merges(adds) file2 to file1
    */
-  private File mergeFiles(File file1, File file2) throws FileNotFoundException {
+  private File mergeFiles(File file1, File file2) throws ClassNotFoundException, IOException {
     FileInputStream fileInputStream = new FileInputStream(file2);
     FileOutputStream fileOutputStream = new FileOutputStream(file2, true);
 
@@ -358,10 +368,10 @@ public class LSM<K, V> {
     int offset = 0;
     while (offset < file2.length()) {
       record = readRecord(fileInputStream, offset);
-      
-      
+      writeRecordWithHint(file1, record.key, record.value);
+      offset = record.endOffset;
     }
-    fos.close();
+    fileOutputStream.close();
   }
 
   private synchronized void purgeOldCopies() {
@@ -391,8 +401,7 @@ public class LSM<K, V> {
     sortFiles(allDataFiles);
 
     List<File> hintFiles = allDataFiles.stream().filter(f -> f.getName().endsWith(".hint")
-    // && Long.valueOf(f.getName().split( "\\.")[0]) < activeSegmentId
-    )
+        && Long.valueOf(f.getName().split("\\.")[0]) < activeSegmentId)
         .collect(Collectors.toList());
     Set<String> hintFilesIdSet = hintFiles.stream().map(f -> f.getName().split("\\.")[0])
         .collect(Collectors.toSet());
@@ -402,11 +411,19 @@ public class LSM<K, V> {
     Set<String> segmentIdsSet = segmentFiles.stream().map(f -> f.getName().split("\\.")[0])
         .collect(Collectors.toSet());
 
+    /*
+     * recovery segments can have older version segments, that's why we
+     * getLatestVersionFile
+     */
     List<File> recoverySegmentFiles = segmentIdsSet.stream()
         .filter(id -> !hintFilesIdSet.contains(id))
         .map(id -> getLatestVersionFile(id, segmentFiles))
         .collect(Collectors.toList());
 
+    /*
+     * 
+     * compacted segments don't have older version hint files
+     */
     for (File hintFile : hintFiles) {
 
       FileInputStream fileInputStream = new FileInputStream(hintFile);
@@ -496,6 +513,25 @@ public class LSM<K, V> {
     });
   }
 
+  private void sortFiles(File[] files) {
+    Arrays.sort(files, new Comparator<File>() {
+      @Override
+      public int compare(File o1, File o2) {
+        String[] o1Split = o1.getName().split("\\.");
+        String[] o2Split = o2.getName().split("\\.");
+        int o1Id = Integer.valueOf(o1Split[0]);
+        int o2Id = Integer.valueOf(o2Split[0]);
+        int o1Version = Integer.valueOf(o1Split[1]);
+        int o2Version = Integer.valueOf(o2Split[1]);
+        if (o1Id == o2Id) {
+          return o1Version - o2Version;
+        } else {
+          return o1Id - o2Id;
+        }
+      }
+    });
+  }
+
   private File getLatestVersionFile(String segmentId, List<File> segmentFiles) {
     List<File> segmentFilesWithId = segmentFiles.stream().filter(f -> f.getName().startsWith(segmentId + "."))
         .collect(Collectors.toList());
@@ -530,11 +566,10 @@ public class LSM<K, V> {
     }
   }
 
-  private synchronized File compactSegment(File oldSegment)
+  private synchronized void compactSegment(File segmentToMergeTo, File oldSegment)
       throws IOException, ClassNotFoundException {
     // open the segment
     FileInputStream fos = new FileInputStream(oldSegment);
-    File newSegment = new File(dataFolderPath, getNewSegmentVersionName(oldSegment.getName()));
 
     // TODO: we only need the key here
     Tuple<K, V> record;
@@ -545,7 +580,7 @@ public class LSM<K, V> {
       if (keyDir.containsKey(key)) {
         // write the record to the new segment
         // TODO: use replace here
-        replaceRecordWithHint(newSegment, key, record.getValue());
+        replaceRecordWithHint(segmentToMergeTo, key, record.getValue());
       } else {
         // skip the record
       }
@@ -554,8 +589,6 @@ public class LSM<K, V> {
     }
     fos.close();
 
-    return newSegment;
-
   }
 
   private String getNewSegmentVersionName(String oldSegmentName) {
@@ -563,6 +596,11 @@ public class LSM<K, V> {
     // return the first part + "." + the 2nd field + 1
     String temp[] = oldSegmentName.split("\\.");
     return temp[0] + "." + String.valueOf(Integer.valueOf(temp[1]) + 1);
+  }
+
+  private String getNextSegment(String oldSegmentName) {
+    String temp[] = oldSegmentName.split("\\."); // 0 -> segment id , 1 -> segment id version
+    return String.valueOf(Integer.valueOf(temp[0]) + 1) + "." + temp[1];
   }
 
   public int getSegmentSizeThreshold() {
