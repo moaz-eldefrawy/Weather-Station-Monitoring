@@ -8,7 +8,7 @@
 
 <img src="./system-design.svg">
 
-### overview
+### Overview
 
 - Each weather station outputs a status message every 1 second to report its weather status to Kafka.
 - The Central Station consumes these weahter status messages does the following:
