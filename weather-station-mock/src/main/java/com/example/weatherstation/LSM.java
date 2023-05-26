@@ -578,7 +578,7 @@ public class LSM<K, V> {
     while (offset < oldSegment.length()) {
       record = readRecord(fos, offset);
       K key = record.getKey();
-      if (keyDir.containsKey(key)) {
+      if (keyDir.containsKey(key) && keyDir.get(key).equals(record.value)) {
         // write the record to the new segment
         // TODO: use replace here
         replaceRecordWithHint(segmentToMergeTo, key, record.getValue());

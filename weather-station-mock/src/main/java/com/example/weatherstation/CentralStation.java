@@ -34,9 +34,9 @@ public class CentralStation {
     parquetDir.mkdirs();
     StatusParquetWriter statusParquetWriter;
     ElasticSearchStatusWriter elasticSearchStatusWriter = new ElasticSearchStatusWriter();
-    LSM lsm;
+    LSM<Long, Status> lsm;
     try {
-      lsm = new LSM.Builder<>().build();
+      lsm = new LSM.Builder<Long, Status>().build();
     } catch (ClassNotFoundException | IOException e) {
       System.out.println("could not generate the LSM");
       throw new Exception(e);

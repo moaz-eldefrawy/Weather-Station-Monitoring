@@ -42,7 +42,6 @@ public class StatusParquetWriter {
     this.outputDir = outputDir;
     this.schema = MessageTypeParser.parseMessageType(
         getFileContent(schemaFile));
-    fileId = 0;
     statusRecords = new HashMap<>();
   }
 
@@ -51,7 +50,6 @@ public class StatusParquetWriter {
     this.outputDir = outputDir;
     this.schema = MessageTypeParser.parseMessageType(
         getFileContent(schemaFile));
-    fileId = 0;
     statusRecords = new HashMap<>();
   }
 
