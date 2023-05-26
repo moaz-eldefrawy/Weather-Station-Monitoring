@@ -22,6 +22,12 @@
 
 ### LSM
 
+We build or own LSM from scratch implementing the following:
+- write files to segments and maintain their hint files
+- compaction over the segments to reduce memory usage
+- synchronizing between the compaction, reader and writer threads.
+- fast recovery using hint files
+
 ## Development Installation
 
 - install java 11
