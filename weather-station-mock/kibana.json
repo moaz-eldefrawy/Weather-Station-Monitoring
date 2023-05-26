@@ -1,0 +1,45 @@
+
+DELETE weather-status
+
+POST /weather-status/_doc
+{
+  "id": 1,
+  "battery": "low",
+  "sNo": 1
+}
+
+POST /weather-status/_doc
+{
+  "id": 2,
+  "battery": "mid",
+  "sNo": 10
+}
+
+GET weather-status/_search
+
+GET weather-status/_search
+{
+  "query": {
+    "term": {
+      "id": 2
+    }
+  }
+}
+
+
+POST weather-status/_search
+{
+  "size": 1,
+   "query": {
+    "term": {
+      "id": 2
+    }
+  },
+  "aggs": {
+    "max_value": {
+      "max": {
+        "field": "sNo"
+      }
+    }
+  }
+}

@@ -24,7 +24,7 @@ public class CentralStation {
   static final String PARQUET_FOLDER = "parquet-data";
   static final String PARQUET_SCHEMA = "parquet.schema";
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(createConsumerProps());
     KafkaProducer<String, String> specialMessageProducer = new KafkaProducer<>(createProduceProps());
     File lsmDir = new File(LSM_FOLDER);
@@ -33,6 +33,14 @@ public class CentralStation {
     lsmDir.mkdirs();
     parquetDir.mkdirs();
     StatusParquetWriter statusParquetWriter;
+    ElasticSearchStatusWriter elasticSearchStatusWriter = new ElasticSearchStatusWriter();
+    LSM lsm;
+    try {
+      lsm = new LSM.Builder<>().build();
+    } catch (ClassNotFoundException | IOException e) {
+      System.out.println("could not generate the LSM");
+      throw new Exception(e);
+    }
     try {
       statusParquetWriter = new StatusParquetWriter(parquetDir, parquetSchema, 50);
       statusParquetWriter.log = true;
@@ -58,8 +66,11 @@ public class CentralStation {
                 "Some Special Message of " + status.getWeather().getHumidity().toString()));
           }
 
-          statusParquetWriter.write(status);
+          System.out.println(status.toString());
 
+          statusParquetWriter.write(status);
+          lsm.put(status.getStationId(), status);
+          // elasticSearchStatusWriter.write(status);
         }
       }
     } catch (Exception e) {

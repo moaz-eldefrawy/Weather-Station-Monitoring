@@ -23,16 +23,32 @@ import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 
 public class ElasticSearchStatusWriter {
-  RestClient restClient = RestClient.builder(
+  static RestClient restClient = RestClient.builder(
       new HttpHost(Constants.ELASTIC_SEARCH_SERVER.split(":")[0],
           Integer.valueOf(Constants.ELASTIC_SEARCH_SERVER.split(
               ":")[1])))
       .build();
 
-  ElasticsearchTransport transport = new RestClientTransport(
+  static ElasticsearchTransport transport = new RestClientTransport(
       restClient, new JacksonJsonpMapper());
 
-  ElasticsearchClient client = new ElasticsearchClient(transport);
+  static ElasticsearchClient client = new ElasticsearchClient(transport);
+
+  // public static void main(String[] args) throws ElasticsearchException,
+  // IOException {
+  // Reader input = new StringReader(
+  // "{'@timestamp': '2022-04-08T13:55:32Z', 'level': 'warn', 'message': 'Some log
+  // message'}"
+  // .replace('\'', '"'));
+
+  // IndexRequest<JsonData> request = IndexRequest.of(i -> i
+  // .index("logs")
+  // .withJson(input));
+
+  // IndexResponse response = client.index(request);
+
+  // System.out.println(response.toString());
+  // }
 
   ElasticSearchStatusWriter() {
 
@@ -43,7 +59,7 @@ public class ElasticSearchStatusWriter {
     System.out.println(json);
     Reader input = new StringReader(json);
     IndexRequest<JsonData> request = IndexRequest.of(i -> i
-        .index("status")
+        .index(Constants.INDEX_NAME)
         .withJson(input));
 
     IndexResponse response = client.index(request);

@@ -17,3 +17,7 @@ buildNumber.properties
 .classpath
 *.crc
 *.parquet
+
+lsm-data/*
+parquet-data/*
+parquet-data-test/*
