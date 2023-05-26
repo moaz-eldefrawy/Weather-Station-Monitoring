@@ -18,7 +18,7 @@
   - Write data to the bitcask lsm
 
 - Then a connector fetches the parquet data into ES to be analyzed by kibana and report battry status like the following
-  <img src="./kibana.png">
+  <img src="./kibana.png" width="300" height="200">
 
 ### LSM
 
