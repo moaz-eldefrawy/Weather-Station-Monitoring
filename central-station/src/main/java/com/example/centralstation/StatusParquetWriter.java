@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -31,7 +32,6 @@ public class StatusParquetWriter {
 
   File outputDir;
   MessageType schema;
-  int fileId;
   public boolean log = false;
   /*
    * Map from station id to list of status records for that station
@@ -42,7 +42,6 @@ public class StatusParquetWriter {
     this.outputDir = outputDir;
     this.schema = MessageTypeParser.parseMessageType(
         getFileContent(schemaFile));
-    fileId = 0;
     statusRecords = new HashMap<>();
   }
 
@@ -51,7 +50,6 @@ public class StatusParquetWriter {
     this.outputDir = outputDir;
     this.schema = MessageTypeParser.parseMessageType(
         getFileContent(schemaFile));
-    fileId = 0;
     statusRecords = new HashMap<>();
   }
 
@@ -65,7 +63,7 @@ public class StatusParquetWriter {
       System.out.println("Parquet " + stationId + " batch size " + this.statusRecords.get(stationId).size());
     if (this.statusRecords.get(stationId).size() >= BATCH_SIZE) {
       StatusParquetWriterHelper.writeToParquet(statusRecords.get(stationId), schema,
-          new Path(outputDir.getAbsolutePath() + File.separator + fileId++ + "." + stationId + ".parquet"));
+          new Path(outputDir.getAbsolutePath() + File.separator + UUID.randomUUID() + "." + stationId + ".parquet"));
       this.statusRecords.get(stationId).clear();
     }
 

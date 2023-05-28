@@ -5,7 +5,7 @@ metadata:
   labels:
     app: weather-station-mock
 spec:
-  replicas: 3
+  replicas: 5
   selector:
     matchLabels:
       app: weather-station-mock
