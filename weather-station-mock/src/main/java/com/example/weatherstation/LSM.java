@@ -578,7 +578,7 @@ public class LSM<K, V> {
     while (offset < oldSegment.length()) {
       record = readRecord(fos, offset);
       K key = record.getKey();
-      if (keyDir.containsKey(key) && keyDir.get(key).equals(record.value)) {
+      if (keyDir.containsKey(key) && keyDir.get(key).equals(new ValueLocation(oldSegment.getName(), offset))) {
         // write the record to the new segment
         // TODO: use replace here
         replaceRecordWithHint(segmentToMergeTo, key, record.getValue());
@@ -754,4 +754,17 @@ class ValueLocation {
   public int getOffset() {
     return offset;
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    ValueLocation other = (ValueLocation) obj;
+    return offset == other.offset && (file == null ? other.file == null : file.equals(other.file));
+  }
+
 }

@@ -203,7 +203,7 @@ public class LSMTest {
     // compact
     lsm.compact();
 
-    Thread.sleep(10);
+    Thread.sleep(100);
 
     // get keyDir
     ConcurrentHashMap<String, ValueLocation> oldKeyDir = lsm.getKeyDir();
