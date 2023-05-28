@@ -8,12 +8,11 @@
 
 <img src="./system-design.svg">
 
-### overview
+### Overview
 
 - Each weather station outputs a status message every 1 second to report its weather status to Kafka.
-- The Central Station consumes these weahter status messages does the following:
-
-  - check fo humidity and notify if went above certain level
+- The Central Station consumes these weather status messages does the following:
+  - Check for high humidity and notify if it's above a certain level
   - Batch archive data in parquet files
   - Write data to the bitcask lsm
 
@@ -22,7 +21,7 @@
 
 ### LSM
 
-We build or own LSM from scratch implementing the following:
+We built our own LSM from scratch implementing the following:
 - write files to segments and maintain their hint files
 - compaction over the segments to reduce memory usage
 - synchronizing between the compaction, reader and writer threads.
